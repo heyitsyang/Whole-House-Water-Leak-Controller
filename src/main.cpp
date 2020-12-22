@@ -9,7 +9,7 @@
 #include <ezTime.h>
 
 
-#define VERSION "Ver 2.1"
+#define VERSION "Ver 2.2"
 //#define VALVE_INSTALLED         // comment out if you have no valve installed !!!
 
 // i2c pins are usually D1 & D2 - see Valve Control Settings below for explanation
