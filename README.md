@@ -5,10 +5,10 @@ Home Automation water controller - pressure monitoring, valve control,  &amp; le
 Functions (using default behaviors):
 1.	Reads water pressure sensor every 500ms
 2.	Publishes pressure every 5 mins if no significant pressure changes
-a.	Significant pressure changes are .3 PSI or more
-b.	If significant pressure changes are detected, the publishing rate is increased to 5 sec until pressure changes subside
+    a.	Significant pressure changes are .3 PSI or more
+    b.	If significant pressure changes are detected, the publishing rate is increased to 5 sec until pressure changes subside
 3.	Serial port messages are robust – use serial monitor & MQTT Explorer for debugging
-a.	Errors and status reports are published to MQTT
+    a.	Errors and status reports are published to MQTT
 4.	The following MQTT commands via MQTT are supported:
    Commands are prefixed with RECV_COMMAND_TOPIC
    Valid commands:
@@ -24,10 +24,10 @@ a.	Errors and status reports are published to MQTT
      reboot         - reboots device
      help           - shows list of valid commands via serial & MQTT
 5.	Valve protection functions are incorporated
-a.	The valve changes position by inverting polarity of the two control wires.  This can be done with a manual switch or via ESP8266 control.  Protection is necessary because the manual switch controls the valve directly in case of ESP8266 failure, so it is possible to get out of sync.
-b.	Internal valveState synchronized every 30sec with actual valve position as read from the valve position switches in case manual control is used.
-c.	Valve is automatically closed if valve switches indicate neither open or closed position for more than 30 secs.
-d.	When activated, relays controlling valve activation are engaged for 10sec.  They are intentionally open loop due to the potential of manual control interference.
+    a.	The valve changes position by inverting polarity of the two control wires.  This can be done with a manual switch or via ESP8266 control.  Protection is necessary because the manual switch controls the valve directly in case of ESP8266 failure, so it is possible to get out of sync.
+    b.	Internal valveState synchronized every 30sec with actual valve position as read from the valve position switches in case manual control is used.
+    c.	Valve is automatically closed if valve switches indicate neither open or closed position for more than 30 secs.
+    d.	When activated, relays controlling valve activation are engaged for 10sec.  They are intentionally open loop due to the potential of manual control interference.
 6.	GPIO assignment for a potential two-wire pulse output flowmeter are  included, but no other programming has been done.
 7.	NTP, local timezone, & DST are supported
 8.	OTA is supported
@@ -54,9 +54,9 @@ GPIO map:
 
 Essential Hardware:
 •	824-M32JM-000105-100  (Stocked at Mouser Electronics)
-M32JM-000105-100PG
-TE Connectivity Industrial Pressure Sensors
-US HTS:8532290040 ECCN:EAR99 COO:CN
+    M32JM-000105-100PG
+    TE Connectivity Industrial Pressure Sensors
+    US HTS:8532290040 ECCN:EAR99 COO:CN
 •	Motorized Ball Valve- 1" Stainless Steel Electrical Ball Valve with Full Port, 9-24V DC and 5 Wire Setup, can be used with Indicator Lights, [Indicate Open or Closed Position] by U.S. Solid
 https://smile.amazon.com/dp/B06XCN8V6W/ref=cm_sw_em_r_mt_dp_zI.YFbWGFTD1B?_encoding=UTF8&psc=1
 •	mxuteuk 3pcs Momentary Rocker Switch Toggle Power Button (ON)/Off/(ON) 6 Pin 250V/10A 125V/15A, Use for Car Auto Boat Household Appliances KCD2-223-JT  by mxuteuk
@@ -65,4 +65,3 @@ https://smile.amazon.com/dp/B0885W19KL/ref=cm_sw_em_r_mt_dp_.A.YFbV7YQZZY?_encod
 https://smile.amazon.com/dp/B00SKG6OM4/ref=cm_sw_em_r_mt_dp_5B.YFbPCCPKMZ?_encoding=UTF8&psc=1
 •	MCIGICM LM2596 Buck Converter, DC to DC 3.0-40V to 1.5-35V Step Down Power Supply High Efficiency Voltage Regulator Module by McIgIcM
 https://smile.amazon.com/dp/B06XZ1DKF2/ref=cm_sw_em_r_mt_dp_cG.YFbN4SJQHS
-
