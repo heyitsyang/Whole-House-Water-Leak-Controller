@@ -8,7 +8,7 @@
 #include <PubSubClient.h>
 #include <ezTime.h>
 
-#include "ShenCentral.h"               // COMMENT THIS OUT FOR YOUR INSTANCE - this vontains stuff for my network, not yours
+#include "ShenCentral.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
 #define VERSION "Ver 3.0"
 
@@ -34,10 +34,10 @@
 #define DEVICE_NAME "watermain"
 
 #ifndef WIFI_SSID
-#define WIFI_SSID "HOTLAB1"            //  <<<<<<<  REPLACE WITH YOUR CREDENTIALS
+#define WIFI_SSID "your_ssid"            //  <<<<<<<  REPLACE WITH YOUR CREDENTIALS
 #endif
 #ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "handsontech"    //  <<<<<<<  REPLACE WITH YOUR CREDENTIALS
+#define WIFI_PASSWORD "your_password"    //  <<<<<<<  REPLACE WITH YOUR CREDENTIALS
 #endif
 
 // Time settings
