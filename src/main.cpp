@@ -8,6 +8,8 @@
 #include <PubSubClient.h>
 #include <ezTime.h>
 
+#include "ShenCentral.h"               // COMMENT THIS OUT FOR YOUR INSTANCE - this vontains stuff for my network, not yours
+
 #define VERSION "Ver 3.0"
 
 // i2c pins are usually D1 & D2 - see Valve Control Settings below for explanation
@@ -31,15 +33,11 @@
 // Name your device here
 #define DEVICE_NAME "watermain"
 
-// WiFi network credentials
-#define WIFI_SSID "ShenCentral"    // <<<<<<<<<<<< REMOVE BEFORE SHARING
-#define WIFI_PASSWORD "3096928712" // <<<<<<<<<<<< REMOVE BEFORE SHARING
-
 #ifndef WIFI_SSID
-#define WIFI_SSID "HOTLAB1"
+#define WIFI_SSID "HOTLAB1"            //  <<<<<<<  REPLACE WITH YOUR CREDENTIALS
 #endif
 #ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "handsontech"
+#define WIFI_PASSWORD "handsontech"    //  <<<<<<<  REPLACE WITH YOUR CREDENTIALS
 #endif
 
 // Time settings
