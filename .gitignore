@@ -9,4 +9,3 @@ lib/README
 src/README
 test/README
 platformio.ini
-.gitignore/*
