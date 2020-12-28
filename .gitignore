@@ -3,3 +3,9 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+include/ShenCentral.h
+include/README
+lib/README
+src/README
+test/README
+platformio.ini
