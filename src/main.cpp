@@ -8,7 +8,8 @@
 #include <PubSubClient.h>
 #include <ezTime.h>
 
-#include "ShenCentral.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
+// private definitions
+#include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
 #define VERSION "Ver 3.0"
 
@@ -41,12 +42,12 @@
 #endif
 
 // Time settings
-#define MY_TIMEZONE "America/New_York" // use Olson format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+#define MY_TIMEZONE "America/New_York"               // use Olson format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 // MQTT
 #define MQTT_USER_NAME "watermain"
 #define MQTT_PASSWORD "watermain"
-#define MQTT_SERVER "haha.shencentral.net" // use either NDS name or IP address
+#define MQTT_SERVER "haha.shencentral.net"           // use either DNS name or IP address
 
 #define MSG_BUFFER_SIZE 320                          // for MQTT message payload
 #define VERSION_TOPIC "watermain/report/version"     // report software version at connect
