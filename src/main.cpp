@@ -17,7 +17,7 @@
 #define I2C_ADDR 0x28
 #define MAX_PRESSURE 100
 #define PIN_SDA D6 // (GPIO12)  Pins where i2c
-#define PIN_SDL D7 // (GPIO13)  SDA & SDL are attached
+#define PIN_SCL D7 // (GPIO13)  SDA & SDL are attached
 
 // Valve control settings
 // On the ESP8266 pins D1 & D2 are the only two that do not glitch HIGH at startup/reset.
@@ -26,7 +26,6 @@
 #define PIN_VALVE_OFF D2               // (GPIO4)   DO NOT SET VALVE_ON & VALVE_OFF high at the same time!! It will short out the power supply!!
 #define PIN_VALVE_ON_INDICATOR D0      // (GPIO16)  Confirms valve is in ON position when signal high
 #define PIN_VALVE_OFF_INDICATOR D5     // (GPIO14)  Confirms valve is in OFF position when signal high
-#define RELAY_ACTIVE_DURATION_MS 10000 // Relays are only active long enough for the valve to rotate
 
 // Flow meter
 #define PIN_FLOW_SIGNAL D8
@@ -71,6 +70,7 @@
 #define OPEN_VALVE 1
 #define CLOSE_VALVE 0
 #define PRESSURE_SETTLING_DELAY_MS 5000              // wait for pressure to settle a bit after closing valve for SPT
+#define VALVE_ROTATION_TIME_MS 10000                 // time required for valve to open/close - relays are only active long enough for the valve to rotate
 #define DEFAULT_VALVE_INSTALLED_STATE 0              // the assumed state of valve installation when everything is set to defaults 0 = not installed, 1 = installed
 #define VALVE_ERROR_DISPOSITION 0                    // 0=CLOSED, 1=OPEN - how the valve will default if everything goes badly - also used if manual switch has left valve between OPEN/CLOSED
 #define VALVE_SYNC_INTERVAL_MS 30000                 // how often actual valve switch will be checked & synced with software valveState (in case manual button has been used)
@@ -81,7 +81,6 @@
 #define DEFAULT_PRESSURE_CHANGE_PSI .3               // amount of change in PSI to initiate a publishing event
 #define PREFER_FAHRENHEIT true                       // temperature reported in Celsius unless this is set to true
 #define DEFAULT_SPT_TEST_DURATION_MINUTES 10         // duration of Static Pressure Test (valve off & observe pressure change)
-#define DEFAULT_SPT_ACCEPTABLE_DROP_PSI 1.0          // pressure drop greater than this value fails the Static Pressure Test
 
 #define TIMEZONE_EEPROM_OFFSET 0 // location-to-timezone info - saved in case eztime server is down
 
@@ -107,7 +106,7 @@ struct Parameters
 
 struct Parameters opParams;
 
-byte valveState = VALVE_ERROR_DISPOSITION; // if all saved data is lost this is the valve setting
+byte valvePreSPT, valveState = VALVE_ERROR_DISPOSITION; // if all saved data is lost VALVE_ERROR_DISPOSITION is the valve setting
 File paramFileObj, valveFileObj;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -216,7 +215,7 @@ void setup_OTA()
 //   **  applyValveState()  **
 //   *************************
 
-boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses the global char msg[]
+boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses the global char msg[]; does not set valveState global
 {
   char val[3];
   switch (desiredState)
@@ -225,7 +224,7 @@ boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses
     digitalWrite(PIN_VALVE_OFF, HIGH); // turn on just enough to rotate valve
     Serial.print(F("Closing valve..."));
     valveNow = millis();
-    while (millis() - valveNow < RELAY_ACTIVE_DURATION_MS)
+    while (millis() - valveNow < VALVE_ROTATION_TIME_MS)
       yield();
     digitalWrite(PIN_VALVE_OFF, LOW);
     Serial.println(F("valve is CLOSED (state=0)"));
@@ -248,7 +247,7 @@ boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses
     digitalWrite(PIN_VALVE_ON, HIGH); // turn on just enough to rotate valve
     Serial.print(F("Opening valve..."));
     valveNow = millis();
-    while (millis() - valveNow < RELAY_ACTIVE_DURATION_MS)
+    while (millis() - valveNow < VALVE_ROTATION_TIME_MS)
       yield();
     digitalWrite(PIN_VALVE_ON, LOW);
     Serial.println(F("valve is OPEN (state=1)"));
@@ -280,9 +279,12 @@ void endSPT()
 {
   sprintf(msg, "%.2f", medianPressure);
   mqttClient.publish(SPT_ENDING_PRESSURE_TOPIC, msg);
+  Serial.printf("%s  MQTT SENT: %s/%.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_ENDING_PRESSURE_TOPIC, medianPressure);
   sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
   mqttClient.publish(SPT_RESULT_TOPIC, msg);
-  applyValveState(OPEN_VALVE, true); // open the valve
+  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
+  valveState = valvePreSPT;
+  applyValveState(valvePreSPT, true); // restore the valveState to state before test
 }
 
 //   ***********************
@@ -297,58 +299,61 @@ boolean reconnect()
     Serial.print(F("MQTT connected to "));
     Serial.println(F(MQTT_SERVER));
 
-    // Sync valveState
-
-    // if actual valve state cannot be determined, then use last saved state & set valve to match
-    if ((digitalRead(PIN_VALVE_ON_INDICATOR) == LOW) && (digitalRead(PIN_VALVE_OFF_INDICATOR) == LOW))
+    if (opParams.valveInstalled == 1)
     {
-      Serial.println(F("Actual valve state cannot be determined. Setting valve to last saved state."));
+      // Sync valveState
 
-      if (LittleFS.exists(F(VALVE_STATE_FILENAME))) // if file exists
+      // if actual valve state cannot be determined, then use last saved state & set valve to match
+      if ((digitalRead(PIN_VALVE_ON_INDICATOR) == LOW) && (digitalRead(PIN_VALVE_OFF_INDICATOR) == LOW))
       {
-        valveFileObj = LittleFS.open(F(VALVE_STATE_FILENAME), "r+");
-        valveState = valveFileObj.read();
-        if (valveState != -1)
+        Serial.println(F("Actual valve state cannot be determined. Setting valve to last saved state."));
+
+        if (LittleFS.exists(F(VALVE_STATE_FILENAME))) // if file exists
         {
-          Serial.printf("Last valveState loaded from file: valveState = %d\n", valveState);
+          valveFileObj = LittleFS.open(F(VALVE_STATE_FILENAME), "r+");
+          valveState = valveFileObj.read();
+          if (valveState != -1)
+          {
+            Serial.printf("Last valveState loaded from file: valveState = %d\n", valveState);
+          }
+          else
+          {
+            Serial.println(F("valveState file read error.  valveState set VALVE_ERROR_DISPOSITION"));
+            valveState = VALVE_ERROR_DISPOSITION;
+            if (valveFileObj.write((uint8_t *)&valveState, sizeof(valveState)) > 0)
+              Serial.printf("Valve file re-created: %s, %d bytes\n", valveFileObj.name(), valveFileObj.size());
+            else
+              Serial.println(F("Valve file re-creation error"));
+          }
+          valveFileObj.close();
         }
         else
-        {
-          Serial.println(F("valveState file read error.  valveState set VALVE_ERROR_DISPOSITION"));
-          valveState = VALVE_ERROR_DISPOSITION;
+        { // fill it with default value
+          Serial.println(F("No valve file detected"));
+          valveState = 0;
+          valveFileObj = LittleFS.open(F(VALVE_STATE_FILENAME), "w+");
           if (valveFileObj.write((uint8_t *)&valveState, sizeof(valveState)) > 0)
-            Serial.printf("Valve file re-created: %s, %d bytes\n", valveFileObj.name(), valveFileObj.size());
+            Serial.printf("Valve file created: %s, %d bytes\n", valveFileObj.name(), valveFileObj.size());
           else
-            Serial.println(F("Valve file re-creation error"));
+            Serial.println(F("Valve file creation error"));
+          valveFileObj.close();
         }
-        valveFileObj.close();
+        applyValveState(valveState, false); // no need to write again, so just update MQTT
       }
       else
-      { // fill it with default value
-        Serial.println(F("No valve file detected"));
-        valveState = 0;
-        valveFileObj = LittleFS.open(F(VALVE_STATE_FILENAME), "w+");
-        if (valveFileObj.write((uint8_t *)&valveState, sizeof(valveState)) > 0)
-          Serial.printf("Valve file created: %s, %d bytes\n", valveFileObj.name(), valveFileObj.size());
-        else
-          Serial.println(F("Valve file creation error"));
-        valveFileObj.close();
-      }
-      applyValveState(valveState, false); // no need to write again, so just update MQTT
-    }
-    else
-    {
-      if ((digitalRead(PIN_VALVE_ON_INDICATOR) == HIGH) && (valveState != 1))
       {
-        Serial.println(F("ValveState set to actual: valveState=1"));
-        valveState = 1;
-        applyValveState(valveState, true);
-      }
-      if ((digitalRead(PIN_VALVE_OFF_INDICATOR) == HIGH) && (valveState != 0))
-      {
-        Serial.println(F("ValveState set to actual: valveState=0"));
-        valveState = 0;
-        applyValveState(valveState, true);
+        if ((digitalRead(PIN_VALVE_ON_INDICATOR) == HIGH) && (valveState != 1))
+        {
+          Serial.println(F("ValveState set to actual: valveState=1"));
+          valveState = 1;
+          applyValveState(valveState, true);
+        }
+        if ((digitalRead(PIN_VALVE_OFF_INDICATOR) == HIGH) && (valveState != 0))
+        {
+          Serial.println(F("ValveState set to actual: valveState=0"));
+          valveState = 0;
+          applyValveState(valveState, true);
+        }
       }
     }
 
@@ -479,13 +484,17 @@ void callback(char *topic, byte *payload, unsigned int length)
     cmdValid = true;
     if (opParams.valveInstalled)
     {
+      valvePreSPT = valveState;
+      valveState = CLOSE_VALVE;
       applyValveState(CLOSE_VALVE, true); // close the valve
       valveNow = millis();
+      Serial.printf("Waiting %d msecs for pressure to settle\n", PRESSURE_SETTLING_DELAY_MS);
       while (millis() - valveNow < PRESSURE_SETTLING_DELAY_MS) // wait for pressure to settle
         yield();
       sptBeginningPressure = medianPressure;
       sprintf(msg, "%.2f", sptBeginningPressure);
-      mqttClient.publish(SPT_BEGINNING_PRESSURE_TOPIC, msg);              // report SPT beginning pressur
+      mqttClient.publish(SPT_BEGINNING_PRESSURE_TOPIC, msg);              // report SPT beginning pressure
+      Serial.printf("%s  MQTT SENT: %s/%.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_BEGINNING_PRESSURE_TOPIC, sptBeginningPressure);
       setEvent(endSPT, now() + (DEFAULT_SPT_TEST_DURATION_MINUTES * 60)); // set event time
     }
     else
@@ -605,7 +614,7 @@ void setup()
   digitalWrite(PIN_VALVE_ON, LOW);
   digitalWrite(PIN_VALVE_OFF, LOW);
 
-  Wire.begin(PIN_SDA, PIN_SDL);
+  Wire.begin(PIN_SDA, PIN_SCL);
 
   WiFi.hostname(DEVICE_NAME);
   setup_wifi();
@@ -654,6 +663,10 @@ void setup()
                     "\"pressureChange\": \"%.2f\", \"valveInstalled\": \"%d\", \"sptTestDuration\": \"%d\"}\n\n",
                     opParams.version, opParams.idlePublishInterval, opParams.minPublishInterval,
                     opParams.sensorReadInterval, opParams.pressureChange, opParams.valveInstalled, opParams.sptTestDuration);
+      if (opParams.valveInstalled == 1)
+        Serial.println(F("Valve configuration: INSTALLED\n"));
+      else
+        Serial.println(F("Valve configuration: NOT INSTALLED\n"));
     }
     else
     {
@@ -735,7 +748,7 @@ void loop()
         mqttClient.publish(LAST_VALVE_STATE_UNK_TOPIC, myTZ.dateTime(RFC3339).c_str(), true);
         Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), LAST_VALVE_STATE_UNK_TOPIC, myTZ.dateTime(RFC3339).c_str());
         valveState = VALVE_ERROR_DISPOSITION;
-        applyValveState(VALVE_ERROR_DISPOSITION, false); // this can be a loop if valve is half open/closed, so do not write to spare flash
+        applyValveState(VALVE_ERROR_DISPOSITION, false); // this can be a loop if valve is half open/closed, so do not write to flash
         Serial.println(F("To protect flash memory, valveState not saved"));
       }
       else
@@ -758,7 +771,8 @@ void loop()
   }
 
   // Sanity check to prevent MQTT flooding - reset ALL to defaults if deemed insane
-  if ((opParams.idlePublishInterval <= DEFAULT_SENSOR_READ_INTERVAL_MS) || (opParams.minPublishInterval <= DEFAULT_SENSOR_READ_INTERVAL_MS) || (opParams.sensorReadInterval <= 3) || (opParams.pressureChange <= (float).1) || (opParams.sptTestDuration < 60000))
+  if ((opParams.idlePublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
+       || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).1) || (opParams.sptTestDuration < 5))
   {
     Serial.printf("Parameters loaded from file %s \n", PARAMS_FILENAME);
     Serial.printf("{\"version\": \"%s\", \"idlePublishInterval\": \"%d\", \"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", "
