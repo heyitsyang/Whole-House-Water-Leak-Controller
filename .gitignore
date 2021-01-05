@@ -8,4 +8,8 @@ include/README
 lib/README
 src/README
 test/README
+<<<<<<< HEAD
 platformio.ini
+=======
+platformio.ini
+>>>>>>> 705f667f9d5d6da20f725a10fd66b4ad6b577c7e

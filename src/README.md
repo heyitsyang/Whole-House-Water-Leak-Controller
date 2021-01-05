@@ -84,6 +84,7 @@ sensors:
   ```
 
 ## **Electronics**
+This is the detailed list of components used.  If you plan to 3D print the enclosure, buying these specific parts will ensure fit inside the enclosure.
 
 - 824-M32JM-000105-100  (Stocked at Mouser Electronics)
 M32JM-000105-100PG
@@ -91,22 +92,26 @@ TE Connectivity Industrial Pressure Sensors
 US HTS:8532290040 ECCN:EAR99 COO:CN
 - Motorized Ball Valve model JFMSV00014- .75" Stainless Steel Electrical Ball Valve with Full Port, 9-24V DC and 5 Wire Setup, can be used with Indicator Lights, [Indicate Open or Closed Position] by U.S. Solid
 https://amazon.com/dp/B06Y11B8VN/ref=cm_sw_em_r_mt_dp_zI.YFbWGFTD1B?_encoding=UTF8&th=1
+- WeMos ESP8266 D1 Mini https://www.amazon.com/Makerfocus-NodeMcu-Development-ESP8266-Compatible/dp/B01N3P763C/ref=sr_1_26?dchild=1&keywords=Wemos+esp8266&qid=1609860600&sr=8-26
 - mxuteuk 3pcs/pkg (only one is needed) Momentary Rocker Switch Toggle Power Button (ON)/Off/(ON) 6 Pin 250V/10A 125V/15A, Use for Car Auto Boat Household Appliances KCD2-223-JT  by mxuteuk
 https://amazon.com/dp/B0885W19KL/ref=cm_sw_em_r_mt_dp_.A.YFbV7YQZZY?_encoding=UTF8&psc=1
 - Electronics-Salon 2 DPDT Signal Relay Module Board, DC 5V Version, for Arduino Raspberry-Pi 8051 PIC.  by Electronics-Salon.  https://www.amazon.com/Electronics-Salon-Signal-Version-Arduino-Raspberry-Pi/dp/B00SKG6OM4/ref=sr_1_11?dchild=1&keywords=Electronics+Salon&qid=1609815721&sr=8-11
 - RGB LED (only one needed) https://www.amazon.com/Diffused-Multicolor-Common-Cathode-Arduino/dp/B01FDD3B72/ref=sr_1_39?crid=2UPMVM1W8WIF2&dchild=1&keywords=single+rgb+led&qid=1609817012&sprefix=single+RGB+led%2Caps%2C176&sr=8-39
-- 12VDC Power supply:
+- LM2596 Buck Converter (only one needed) https://www.amazon.com/DZS-Elec-Adjustable-Electronic-Stabilizer/dp/B06XRN7NFQ/ref=sr_1_12_sspa?dchild=1&keywords=buck+converter+arduino+2596&qid=1609860095&sr=8-12-spons&psc=1&spLa=ZW5jcnlwdGVkUXVhbGlmaWVyPUEzUVM4MExIWE5HQkM5JmVuY3J5cHRlZElkPUEwMjc5Mjg0RlZYOFpLUlk3VEJUJmVuY3J5cHRlZEFkSWQ9QTA2Nzk2NzAxMkoxS1lZWUdYRzlHJndpZGdldE5hbWU9c3BfbXRmJmFjdGlvbj1jbGlja1JlZGlyZWN0JmRvTm90TG9nQ2xpY2s9dHJ1ZQ==
+- 12VDC Power supply 
 https://amazon.com/gp/product/B07HNV6SBJ/ref=ppx_yo_dt_b_asin_title_o01_s00?ie=UTF8&psc=1
 
-## 3D Printed Enclosure
-
-3D Printing files are availble in the repository in the 3D Printed Enclosure directory.  I printed my enclosure using PETG to avoid shrinkage issues, but there is nothing special about PETG otherwise.  Both STL and Fusion360 files are provided.  If you don't have a 3D printer, there are many services available online that will print for a fee.
-
-You will need to print the bottom, the lid, and one of the two slide-in mounts depending on desired final orientation.
-
-If you choose to 3D print the enclosure, the panel mount holes accomodate the connectors listed below.  Note the aviation connectors are specified with different number of pins to prevent accidentally interchanging the pressure sensor and the valve control wires.  It is possible to use the 6-pin version for both wires if you don't confuse the two or select pin connections so no harm is done if interchanged.
+The panel mount holes of the 3D printed enclosure accomodates the specific connectors listed below.  Note the aviation connectors are specified with different number of pins to prevent accidentally interchanging the pressure sensor and the valve control wires.  It is possible to use the 6-pin version for both wires if you don't confuse the two or select pin connections so no harm is done if interchanged.
 
 - Female DC Power Jack Panel Mount (only one is needed) https://www.amazon.com/TOTOT-5-5mm-Female-Socket-Electrical/dp/B077YB75N3/ref=sr_1_10?dchild=1&keywords=power+jack+5.5mm&qid=1609815794&sr=8-10
 - 4-pin Aviation Connector set (only one is needed) https://amazon.com/gp/product/B07GZFQDNS/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
 - 6-pin Aviation Connector set (only one is needed) https://smile.amazon.com/gp/product/B07L1Q69R5/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
+
+## 3D Printed Enclosure
+
+3D Printing files and the Fusion360 source file are availble in the repository in the 3D Printed Enclosure directory.  I printed my enclosure using PETG to avoid shrinkage issues, but there is nothing special about PETG otherwise.  Both STL and Fusion360 files are provided.  If you don't have a 3D printer, there are many services available online that will print for a fee.
+
+You will need to print the bottom, the lid, and one of the two slide-in mounts depending on desired final orientation.
+
+
 
