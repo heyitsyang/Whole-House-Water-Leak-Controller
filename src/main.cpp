@@ -41,27 +41,25 @@
 #endif
 
 // Time settings
-#define MY_TIMEZONE "America/New_York"               // use Olson format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+#define MY_TIMEZONE "America/New_York"               // <<<<<<< use Olson format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 // MQTT
-#define MQTT_USER_NAME "watermain"
-#define MQTT_PASSWORD "watermain"
-#define MQTT_SERVER "haha.shencentral.net"           // use either DNS name or IP address
+#define MQTT_USER_NAME "watermain"                   // <<<<<<< replace with your MQTT login
+#define MQTT_PASSWORD "watermain"                    // <<<<<<< replace with your MQTT password
+#define MQTT_SERVER "haha.shencentral.net"           // <<<<<<< use either your MQTT broker DNS name or IP address surrounded by quotes
 
 #define MSG_BUFFER_SIZE 320                          // for MQTT message payload
 #define VERSION_TOPIC "watermain/report/version"     // report software version at connect
 #define LAST_BOOT_TOPIC "watermain/report/last_boot" // send boot (not reconnect) time to broker when connected
 #define LWT_TOPIC "watermain/status/LWT"             // MQTT Last Will & Testament
 #define REPORT_TOPIC "watermain/report/params"       // used to send program operating parameters
-#define HELP_TOPIC "watermain/report/help"           // used to send program operating info#define PRESSURE_TOPIC "watermain/pressure"
+#define HELP_TOPIC "watermain/report/help"           // used to send program operating info
 #define PRESSURE_TOPIC "watermain/water_pressure"
 #define TEMPERATURE_TOPIC "watermain/water_temperature"
 #define PRESSURE_SENSOR_FAULT_TOPIC "watermain/report/last_press_sensor_fault" // sends timestamp if pressure error can't be read
 #define VALVE_TOPIC "watermain/zeroisclosed"
 #define LAST_VALVE_STATE_UNK_TOPIC "watermain/report/last_unk_valve_state"  // send timestamp if valve state cannot be determined from indicator inputs
-#define SPT_BEGINNING_PRESSURE_TOPIC "watermain/report/spt_beginning_press" // send at start of Static Pressure Test
-#define SPT_ENDING_PRESSURE_TOPIC "watermain/report/spt_ending_press"       // send at end of Static Pressure Test
-#define SPT_RESULT_TOPIC "watermain/report/spt_result"                      // send at end of Static Pressure Test - end pressure minus start pressure
+#define SPT_RESULT_TOPIC "watermain/spt_result"                             // send at end of Static Pressure Test - end pressure minus start pressure
 #define RECV_COMMAND_TOPIC "watermain/cmd/#"
 
 // Operational parameters & preferences
@@ -215,7 +213,7 @@ void setup_OTA()
 //   **  applyValveState()  **
 //   *************************
 
-boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses the global char msg[]; does not set valveState global
+boolean applyValveState(int desiredState, boolean writeFlag) // this routine uses the global char msg[], it does not set valveState global
 {
   char val[3];
   switch (desiredState)
@@ -232,7 +230,7 @@ boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses
     mqttClient.publish(VALVE_TOPIC, val, true);
     Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), VALVE_TOPIC, val);
 
-    if (saveFlag == true)
+    if (writeFlag == true)
     {
       valveFileObj = LittleFS.open(F(VALVE_STATE_FILENAME), "r+");
       if (valveFileObj.write((uint8_t *)&desiredState, sizeof(desiredState)) > 0)
@@ -255,7 +253,7 @@ boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses
     mqttClient.publish(VALVE_TOPIC, val, true);
     Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), VALVE_TOPIC, val);
 
-    if (saveFlag == true)
+    if (writeFlag == true)
     {
       valveFileObj = LittleFS.open(F(VALVE_STATE_FILENAME), "r+");
       if (valveFileObj.write((uint8_t *)&desiredState, sizeof(desiredState)) > 0)
@@ -277,14 +275,17 @@ boolean applyValveState(int desiredState, boolean saveFlag) // this routine uses
 //   ***********************
 void endSPT()
 {
-  sprintf(msg, "%.2f", medianPressure);
-  mqttClient.publish(SPT_ENDING_PRESSURE_TOPIC, msg);
-  Serial.printf("%s  MQTT SENT: %s/%.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_ENDING_PRESSURE_TOPIC, medianPressure);
+  Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), medianPressure);
   sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
   mqttClient.publish(SPT_RESULT_TOPIC, msg);
   Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
+  sprintf(msg, "{\"last_test\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
+        myTZ.dateTime(RFC3339).c_str(), opParams.sptTestDuration, sptBeginningPressure, medianPressure);
+  mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg);
+  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
+
   valveState = valvePreSPT;
-  applyValveState(valvePreSPT, true); // restore the valveState to state before test
+  applyValveState(valvePreSPT, false); // restore the valveState to state before test
 }
 
 //   ***********************
@@ -486,15 +487,13 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
       valvePreSPT = valveState;
       valveState = CLOSE_VALVE;
-      applyValveState(CLOSE_VALVE, true); // close the valve
+      applyValveState(CLOSE_VALVE, false); // close the valve
       valveNow = millis();
       Serial.printf("Waiting %d msecs for pressure to settle\n", PRESSURE_SETTLING_DELAY_MS);
       while (millis() - valveNow < PRESSURE_SETTLING_DELAY_MS) // wait for pressure to settle
         yield();
       sptBeginningPressure = medianPressure;
-      sprintf(msg, "%.2f", sptBeginningPressure);
-      mqttClient.publish(SPT_BEGINNING_PRESSURE_TOPIC, msg);              // report SPT beginning pressure
-      Serial.printf("%s  MQTT SENT: %s/%.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_BEGINNING_PRESSURE_TOPIC, sptBeginningPressure);
+      Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (DEFAULT_SPT_TEST_DURATION_MINUTES * 60)); // set event time
     }
     else
