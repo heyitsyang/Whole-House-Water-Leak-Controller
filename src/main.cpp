@@ -83,7 +83,7 @@
 #define SPT_DATA_READY 1
 #define SPT_IN_PROCESS 0
 
-#define TIMEZONE_EEPROM_OFFSET 0 // location-to-timezone info - saved in case eztime server is down
+#define TIMEZONE_EEPROM_OFFSET 0                     // location-to-timezone info - saved in case eztime server is down
 
 char msg[MSG_BUFFER_SIZE];
 char lastBoot[50];
@@ -91,7 +91,7 @@ unsigned long lastReconnectAttempt = 0;
 unsigned long lastPublish = 0, lastRead = 0, lastValveSync = 0, lastPressErrReport = 0;
 unsigned long tempNow, lastPublishNow, sensorReadNow, mqttNow, valveNow, lastValveSyncNow, lastPressErrReportNow;
 byte sensorStatus;
-float psiTminus0, psiTminus1, psiTminus2; // psiTminus0 is the current pressure, psiTminus1 is the previous, psiTminus2 is the one before
+float psiTminus0, psiTminus1, psiTminus2;            // psiTminus0 is the current pressure, psiTminus1 is the previous, psiTminus2 is the one before
 float medianPressure, sptBeginningPressure, temperature;
 
 struct Parameters
@@ -223,7 +223,7 @@ boolean applyValveState(int desiredState, boolean writeFlag) // this routine use
   switch (desiredState)
   {
   case 0:
-    digitalWrite(PIN_VALVE_OFF, HIGH); // turn on just enough to rotate valve
+    digitalWrite(PIN_VALVE_OFF, HIGH);                       // turn on just enough to rotate valve
     Serial.print(F("Closing valve..."));
     valveNow = millis();
     while (millis() - valveNow < VALVE_ROTATION_TIME_MS)
@@ -246,7 +246,7 @@ boolean applyValveState(int desiredState, boolean writeFlag) // this routine use
     return (true);
     break;
   case 1:
-    digitalWrite(PIN_VALVE_ON, HIGH); // turn on just enough to rotate valve
+    digitalWrite(PIN_VALVE_ON, HIGH);                        // turn on just enough to rotate valve
     Serial.print(F("Opening valve..."));
     valveNow = millis();
     while (millis() - valveNow < VALVE_ROTATION_TIME_MS)
@@ -284,7 +284,7 @@ void endSPT()
   mqttClient.publish(SPT_RESULT_TOPIC, msg);
   Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
 
-  sprintf(msg, "{\"last_test\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
+  sprintf(msg, "{\"test_start\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
         myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
   mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg);
   Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
@@ -295,7 +295,7 @@ void endSPT()
   Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
 
   valveState = valvePreSPT;
-  applyValveState(valvePreSPT, false); // restore the valveState to state before test
+  applyValveState(valvePreSPT, false);                       // restore the valveState to state before test
 }
 
 //   ***********************
@@ -349,7 +349,7 @@ boolean reconnect()
             Serial.println(F("Valve file creation error"));
           valveFileObj.close();
         }
-        applyValveState(valveState, false); // no need to write again, so just update MQTT
+        applyValveState(valveState, false);                  // no need to write again, so just update MQTT
       }
       else
       {
@@ -413,8 +413,8 @@ void callback(char *topic, byte *payload, unsigned int length)
   //   idlePublishInterval/<new value>  - assigns a <new value>, but does not save to NVM
   //   minPublishInterval/<new value>   - assigns a <new value>, but does not save to NVM
   //   sensorReadInterval/<new value>   - assigns a <new value>, but does not save to NVM
-  //   sptDuration/<new value>      - assigns a <new value> in minutes, but does not save to NVM
-  //   sptStartTest   - starts the Static Pressure Test
+  //   sptDuration/<new value>          - assigns a <new value> in minutes, but does not save to NVM
+  //   sptStart       - starts the Static Pressure Test
   //   reportParams   - publishes parameters to REPORT_TOPIC replacing previous retained report on broker
   //   defaultParams  - sets parameters to default firmware values, but does not save to NVM
   //   readParams     - reads parameters from NVM storage, but does not save to NVM
@@ -490,7 +490,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     else
       Serial.println("Invalid sptDuration value");
   }
-  if (strstr(topic, "sptStartTest")) // start the Static Pressure Test
+  if (strstr(topic, "sptStart")) // start the Static Pressure Test
   {
     cmdValid = true;
     if (opParams.valveInstalled)
@@ -515,7 +515,7 @@ void callback(char *topic, byte *payload, unsigned int length)
 
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
-      setEvent(endSPT, now() + (DEFAULT_SPT_TEST_DURATION_MINUTES * 60)); // set event time
+      setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
     }
     else
       Serial.println("Invalid request - valve not installed");
@@ -605,7 +605,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     cmdValid = true;
     sprintf(msg, "{\"commands\" : \"valveState, idlePublishInterval, minPublishInterval, sensorReadInterval, pressureChange, valveInstalled, "
-                 "sptDuration, sptStartTest, reportParams, defaultParams, readParams, writeParams, deleteParams, reboot, help\"}");
+                 "sptDuration, sptStart, reportParams, defaultParams, readParams, writeParams, deleteParams, reboot, help\"}");
     mqttClient.publish(HELP_TOPIC, msg);
     Serial.printf("%s help > MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), HELP_TOPIC, msg);
   }
