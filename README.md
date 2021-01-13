@@ -128,5 +128,8 @@ Note the aviation connectors below are specified with different number of pins t
 
 You will need to print the bottom, the lid, and one of the two slide-in mounts depending on desired final orientation.
 
+- The WeMos ESP8266 D1 Mini ESP8266 board is mounted upside-down in the enclosure.  Be aware of this before you start wiring.
+
+
 
 
