@@ -118,10 +118,13 @@ Note the aviation connectors below are specified with different number of pins t
 - Qty 1 - 4-pin Aviation Connector set https://amazon.com/gp/product/B07GZFQDNS/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
 - Qty 1 - 6-pin Aviation Connector set https://smile.amazon.com/gp/product/B07L1Q69R5/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
 
-### Circuit Diagram
+### Wiring & Assembly
 
+![Installed](.images/Installed.jpg)
 
+![Circuit Diagram](./images/Wiring_Diagram.jpg)
 
+![Components](./images/Componenets.jpg)
 
 ## **3D Printed Enclosure**
 3D Printing files and the Fusion360 source file are available in this repository under the 3D Printed Enclosure directory.  I printed my enclosure using PETG to avoid shrinkage issues, but there is nothing special about PETG otherwise.  Both STL and Fusion360 files are provided.  If you don't have a 3D printer, there are many services available online that will print for a fee.
