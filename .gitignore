@@ -1,7 +1,7 @@
 .pio
 .vscode
-./platformio.ini
-./test
+platformio.ini
+test
 include/private.h
 include/README
 lib/README
