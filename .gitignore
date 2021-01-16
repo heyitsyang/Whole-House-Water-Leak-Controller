@@ -6,5 +6,3 @@ include/private.h
 include/README
 lib/README
 src/README
-platformio.ini
-platformio.ini
