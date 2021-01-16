@@ -123,10 +123,11 @@ Note the aviation connectors below are specified with different number of pins t
 Wiring Diagram
 ![Circuit Diagram](images/Wiring_Diagram.jpg)
 
-Components mounted in 3D printed case
+Components mounted in 3D printed case.  Leftmost aviation connector is for potential future flow meter.
+
 ![Components](images/Components.jpg)
 
-Installed
+Installed.  Letmost avaition connector is for potential future flow meter.
 ![Installed](images/Installed.jpg)
 
 ## **3D Printed Enclosure**
