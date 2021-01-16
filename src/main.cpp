@@ -666,6 +666,7 @@ void setup()
   strcpy(lastBoot, myTZ.dateTime(RFC3339).c_str());
   Serial.printf("\nLocal time: %s\n\n", lastBoot);
 
+  mqttClient.setBufferSize(MSG_BUFFER_SIZE);
   mqttClient.setServer(MQTT_SERVER, 1883);
   mqttClient.setCallback(callback);
   lastReconnectAttempt = 0;
@@ -833,6 +834,12 @@ void loop()
     opParams.pressureChange = (float)DEFAULT_PRESSURE_CHANGE_PSI;
     opParams.sptDuration = DEFAULT_SPT_TEST_DURATION_MINUTES;
     Serial.println(F("PARAMETER SANITY CHECK FAILED.  All parameters reset to defaults. "));
+    paramFileObj = LittleFS.open(F(PARAMS_FILENAME), "w+");
+    if (paramFileObj.write((uint8_t *)&opParams, sizeof(opParams)) > 0)
+      Serial.printf("New parameters file created: %s, %d bytes\n", paramFileObj.name(), paramFileObj.size());
+    else
+      Serial.println(F("Parameters file creation error"));
+    paramFileObj.close();
   }
 
 
