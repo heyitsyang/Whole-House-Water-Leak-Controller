@@ -13,22 +13,23 @@
 
 #define VERSION "Ver 3.0"
 
-// i2c pins are usually D1 & D2 - see Valve Control Settings below for explanation
+// i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
+// D6 & D7 are used instead - see Valve Control Settings below for explanation
 #define I2C_ADDR 0x28
 #define MAX_PRESSURE 100
 #define PIN_SDA D6 // (GPIO12)  Pins where i2c
 #define PIN_SCL D7 // (GPIO13)  SDA & SDL are attached
 
 // Valve control settings
-// On the ESP8266 pins D1 & D2 are the only two that do not glitch HIGH at startup/reset.
-// Since this application cannot tolerate the glitch, we must use D1 & D2 here.
+// On the ESP8266 pins D1 & D2 are the only two GPIOs that do not glitch HIGH at startup/reset.
+// Since the valve relay wiring cannot tolerate the glitch (will short the power), we must use D1 & D2 here.
 #define PIN_VALVE_ON D1                // (GPIO5)   Valve works by reversing voltage on a set of two wires
 #define PIN_VALVE_OFF D2               // (GPIO4)   DO NOT SET VALVE_ON & VALVE_OFF high at the same time!! It will short out the power supply!!
 #define PIN_VALVE_ON_INDICATOR D0      // (GPIO16)  Confirms valve is in ON position when signal high
 #define PIN_VALVE_OFF_INDICATOR D5     // (GPIO14)  Confirms valve is in OFF position when signal high
 
 // Flow meter
-#define PIN_FLOW_SIGNAL D8
+#define PIN_FLOW_SIGNAL D8             // (GPIO15) Unimplemented
 
 // Name your device here
 #define DEVICE_NAME "watermain"
@@ -48,7 +49,7 @@
 #define MQTT_PASSWORD "watermain"                    // <<<<<<< replace with your MQTT password
 #define MQTT_SERVER "haha.shencentral.net"           // <<<<<<< use either your MQTT broker DNS name or IP address surrounded by quotes
 
-#define MSG_BUFFER_SIZE 320                          // for MQTT message payload
+#define MSG_BUFFER_SIZE 512                          // for MQTT message payload
 #define VERSION_TOPIC "watermain/report/version"     // report software version at connect
 #define LAST_BOOT_TOPIC "watermain/report/last_boot" // send boot (not reconnect) time to broker when connected
 #define LWT_TOPIC "watermain/status/LWT"             // MQTT Last Will & Testament
@@ -64,13 +65,14 @@
 #define RECV_COMMAND_TOPIC "watermain/cmd/#"
 
 // Operational parameters & preferences
+#define INITIAL_VALVE_INSTALLED_STATE 1              // 1 if installed, 0 if not - runtime state can be changed & saved in NVRAM via MQTT command
+#define INITIAL_PRESSURE_SENSOR_INSTALLED_STATE 1    // 1 if installed, 0 if not - runtime state can be changed & saved in NVRAM via MQTT command
 #define PARAMS_FILENAME "/params.bin"
 #define VALVE_STATE_FILENAME "/valve_state.bin"
 #define OPEN_VALVE 1
 #define CLOSE_VALVE 0
 #define PRESSURE_SETTLING_DELAY_MS 5000              // wait for pressure to settle a bit after closing valve for SPT
 #define VALVE_ROTATION_TIME_MS 10000                 // time required for valve to open/close - relays are only active long enough for the valve to rotate
-#define DEFAULT_VALVE_INSTALLED_STATE 0              // the assumed state of valve installation when everything is set to defaults 0 = not installed, 1 = installed
 #define VALVE_ERROR_DISPOSITION 0                    // 0=CLOSED, 1=OPEN - how the valve will default if everything goes badly - also used if manual switch has left valve between OPEN/CLOSED
 #define VALVE_SYNC_INTERVAL_MS 30000                 // how often actual valve switch will be checked & synced with software valveState (in case manual button has been used)
 #define DEFAULT_IDLE_PUBLISH_INTERVAL_MS 300000      // how often sensor data is published if no event driven changes
@@ -78,7 +80,7 @@
 #define PRESSURE_SENSOR_FAULT_PUB_INTERVAL_MS 300000 // how often a pressure sensor error (timestmap) is published if error condition true
 #define DEFAULT_SENSOR_READ_INTERVAL_MS 500          // how often the sensor is read (how soon PSI changes are recognized)
 #define DEFAULT_PRESSURE_CHANGE_PSI .3               // amount of change in PSI to initiate a publishing event
-#define PREFER_FAHRENHEIT true                       // temperature reported in Celsius unless this is set to true
+#define PREFER_FAHRENHEIT 1                          // temperature reported in Celsius unless this is set to 1
 #define DEFAULT_SPT_TEST_DURATION_MINUTES 10         // duration of Static Pressure Test (valve off & observe pressure change)
 #define SPT_DATA_READY 1
 #define SPT_IN_PROCESS 0
@@ -97,11 +99,12 @@ float medianPressure, sptBeginningPressure, temperature;
 struct Parameters
 {
   char version[15];
+  unsigned int valveInstalled;
+  unsigned int pressureInstalled;
   unsigned int idlePublishInterval;
   unsigned int minPublishInterval;
   unsigned int sensorReadInterval;
   float pressureChange;
-  unsigned int valveInstalled;
   unsigned int sptDuration;
 };
 
@@ -379,10 +382,10 @@ boolean reconnect()
     mqttClient.publish(LAST_BOOT_TOPIC, lastBoot, true);
     Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), LAST_BOOT_TOPIC, lastBoot);
 
-    sprintf(msg, "{\"valveState\": \"%d\", \"version\": \"%s\", \"idlePublishInterval\": \"%d\", \"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", "
-                 "\"pressureChange\": \"%.2f\", \"valveInstalled\": \"%d\", \"sptDuration\": \"%d\"}\n\n",
-            valveState, opParams.version, opParams.idlePublishInterval, opParams.minPublishInterval,
-            opParams.sensorReadInterval, opParams.pressureChange, opParams.valveInstalled, opParams.sptDuration);
+    sprintf(msg, "{\"valveState\": \"%d\", \"version\": \"%s\", \"valveInstalled\": \"%d\", \"pressureInstalled\": \"%d\", \"idlePublishInterval\": \"%d\", "
+                 "\"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", \"pressureChange\": \"%.2f\", \"sptDuration\": \"%d\"}\n\n",
+            valveState, opParams.version, opParams.valveInstalled, opParams.pressureInstalled, opParams.idlePublishInterval, opParams.minPublishInterval,
+            opParams.sensorReadInterval, opParams.pressureChange, opParams.sptDuration);
     mqttClient.publish(REPORT_TOPIC, msg, true);
     Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), REPORT_TOPIC, msg);
 
@@ -410,6 +413,8 @@ void callback(char *topic, byte *payload, unsigned int length)
 
   // All commands must be prefixed with RECV_COMMAND_TOPIC
   // Valid commands:
+  //   valveInstalled/<new_value>       - assigns a <new value>, but does not save to NVM
+  //   pressureInstalled/<new_value>    - assigns a <new value>, but does not save to NVM
   //   idlePublishInterval/<new value>  - assigns a <new value>, but does not save to NVM
   //   minPublishInterval/<new value>   - assigns a <new value>, but does not save to NVM
   //   sensorReadInterval/<new value>   - assigns a <new value>, but does not save to NVM
@@ -479,6 +484,17 @@ void callback(char *topic, byte *payload, unsigned int length)
     else
       Serial.println("Invalid valveInstalled value");
   }
+  if (strstr(topic, "pressureInstalled")) // pressureInstalled = 1 if valve is installed, pressureInstalled = 0 otherwise
+  {
+    cmdValid = true;
+    if ((strcmp(msg, "0") == 0) || (strcmp(msg, "1") == 0))
+    {
+      Serial.printf("pressureInstalled set to %s\n", msg);
+      opParams.pressureInstalled = atoi(msg);
+    }
+    else
+      Serial.println("Invalid pressureInstalled value");
+  }
   if (strstr(topic, "sptDuration")) // duration of Static Pressure Test in millisec
   {
     cmdValid = true;
@@ -493,7 +509,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   if (strstr(topic, "sptStart")) // start the Static Pressure Test
   {
     cmdValid = true;
-    if (opParams.valveInstalled)
+    if ( (opParams.valveInstalled == 1) && (opParams.pressureInstalled == 1) )
     {
       sptDataReady = SPT_IN_PROCESS;
       sprintf(msg, "%d", sptDataReady);
@@ -518,7 +534,7 @@ void callback(char *topic, byte *payload, unsigned int length)
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
     }
     else
-      Serial.println("Invalid request - valve not installed");
+      Serial.println("Invalid request - both valve and pressure sensor must be installed");
   }
   if (strstr(topic, "valveState")) // set valve 0=closed 1=open
   {
@@ -534,10 +550,10 @@ void callback(char *topic, byte *payload, unsigned int length)
   if (strstr(topic, "reportParams")) // report opParams
   {
     cmdValid = true;
-    sprintf(msg, "{\"valveState\": \"%d\", \"version\": \"%s\", \"idlePublishInterval\": \"%d\", \"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", "
-                 "\"pressureChange\": \"%.2f\", \"valveInstalled\": \"%d\", \"sptDuration\": \"%d\"}\n\n",
-            valveState, opParams.version, opParams.idlePublishInterval, opParams.minPublishInterval,
-            opParams.sensorReadInterval, opParams.pressureChange, opParams.valveInstalled, opParams.sptDuration);
+    sprintf(msg, "{\"valveState\": \"%d\", \"version\": \"%s\", \"valveInstalled\": \"%d\", \"pressureInstalled\": \"%d\", \"idlePublishInterval\": \"%d\", "
+                 "\"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", \"pressureChange\": \"%.2f\", \"sptDuration\": \"%d\"}\n\n",
+            valveState, opParams.version, opParams.valveInstalled, opParams.pressureInstalled, opParams.idlePublishInterval, opParams.minPublishInterval,
+            opParams.sensorReadInterval, opParams.pressureChange, opParams.sptDuration);
     mqttClient.publish(REPORT_TOPIC, msg, true);
     Serial.printf("%s reportParams > MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), REPORT_TOPIC, msg);
   }
@@ -545,11 +561,12 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     cmdValid = true;
     strcpy(opParams.version, VERSION);
+    opParams.valveInstalled = INITIAL_VALVE_INSTALLED_STATE;
+    opParams.pressureInstalled = INITIAL_PRESSURE_SENSOR_INSTALLED_STATE;
     opParams.idlePublishInterval = DEFAULT_IDLE_PUBLISH_INTERVAL_MS;
     opParams.minPublishInterval = DEFAULT_MIN_PUBLISH_INTERVAL_MS;
     opParams.sensorReadInterval = DEFAULT_SENSOR_READ_INTERVAL_MS;
     opParams.pressureChange = (float)DEFAULT_PRESSURE_CHANGE_PSI;
-    opParams.valveInstalled = DEFAULT_VALVE_INSTALLED_STATE;
     opParams.sptDuration = DEFAULT_SPT_TEST_DURATION_MINUTES;
     Serial.println(F("Parameters set to default firmware values\n"));
   }
@@ -560,10 +577,10 @@ void callback(char *topic, byte *payload, unsigned int length)
     if (paramFileObj.readBytes((char *)&opParams, sizeof(opParams)) > 0)
     {
       Serial.printf("Parameters loaded from file %s \n", PARAMS_FILENAME);
-      Serial.printf("{\"version\": \"%s\", \"idlePublishInterval\": \"%d\", \"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", "
-                    "\"pressureChange\": \"%.2f\", \"valveInstalled\": \"%d\", \"sptDuration\": \"%d\"}\n\n",
-                    opParams.version, opParams.idlePublishInterval, opParams.minPublishInterval,
-                    opParams.sensorReadInterval, opParams.pressureChange, opParams.valveInstalled, opParams.sptDuration);
+      Serial.printf("{\"version\": \"%s\", \"valveInstalled\": \"%d\", \"pressureInstalled\": \"%d\", \"idlePublishInterval\": \"%d\", "
+                    "\"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", \"pressureChange\": \"%.2f\", \"sptDuration\": \"%d\"}\n\n",
+                    opParams.version, opParams.valveInstalled, opParams.pressureInstalled, opParams.idlePublishInterval, opParams.minPublishInterval,
+                    opParams.sensorReadInterval, opParams.pressureChange, opParams.sptDuration);
     }
     else
       Serial.println(F("Unable to read parameters from file"));
@@ -604,8 +621,8 @@ void callback(char *topic, byte *payload, unsigned int length)
   if (strstr(topic, "help"))
   {
     cmdValid = true;
-    sprintf(msg, "{\"commands\" : \"valveState, idlePublishInterval, minPublishInterval, sensorReadInterval, pressureChange, valveInstalled, "
-                 "sptDuration, sptStart, reportParams, defaultParams, readParams, writeParams, deleteParams, reboot, help\"}");
+    sprintf(msg, "{\"commands\" : \"valveInstalled, pressureInstalled, valveState, idlePublishInterval, minPublishInterval, sensorReadInterval, "
+                 "pressureChange, sptDuration, sptStart, reportParams, defaultParams, readParams, writeParams, deleteParams, reboot, help\"}");
     mqttClient.publish(HELP_TOPIC, msg);
     Serial.printf("%s help > MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), HELP_TOPIC, msg);
   }
@@ -679,24 +696,30 @@ void setup()
     if (paramFileObj.readBytes((char *)&opParams, sizeof(opParams)) == sizeof(opParams))
     {
       Serial.println(F("Parameters loaded from file:"));
-      Serial.printf("{\"version\": \"%s\", \"idlePublishInterval\": \"%d\", \"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", "
-                    "\"pressureChange\": \"%.2f\", \"valveInstalled\": \"%d\", \"sptDuration\": \"%d\"}\n\n",
-                    opParams.version, opParams.idlePublishInterval, opParams.minPublishInterval,
-                    opParams.sensorReadInterval, opParams.pressureChange, opParams.valveInstalled, opParams.sptDuration);
+      Serial.printf("{\"version\": \"%s\", \"valveInstalled\": \"%d\", \"pressureInstalled\": \"%d\", \"idlePublishInterval\": \"%d\", "
+                    "\"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", \"pressureChange\": \"%.2f\", \"sptDuration\": \"%d\"}\n\n",
+                    opParams.version, opParams.valveInstalled, opParams.pressureInstalled, opParams.idlePublishInterval, opParams.minPublishInterval,
+                    opParams.sensorReadInterval, opParams.pressureChange, opParams.sptDuration);
       if (opParams.valveInstalled == 1)
         Serial.println(F("Valve configuration: INSTALLED\n"));
       else
         Serial.println(F("Valve configuration: NOT INSTALLED\n"));
+
+      if (opParams.pressureInstalled == 1)
+        Serial.println(F("Pressure sensor configuration: INSTALLED\n"));
+      else
+        Serial.println(F("pressure sensor configuration: NOT INSTALLED\n"));
     }
     else
     {
       Serial.println(F("Parameters file read error.  Using default values."));
       strcpy(opParams.version, VERSION);
+      opParams.valveInstalled = INITIAL_VALVE_INSTALLED_STATE;
+      opParams.pressureInstalled = INITIAL_PRESSURE_SENSOR_INSTALLED_STATE;
       opParams.idlePublishInterval = DEFAULT_IDLE_PUBLISH_INTERVAL_MS;
       opParams.minPublishInterval = DEFAULT_MIN_PUBLISH_INTERVAL_MS;
       opParams.sensorReadInterval = DEFAULT_SENSOR_READ_INTERVAL_MS;
       opParams.pressureChange = (float)DEFAULT_PRESSURE_CHANGE_PSI;
-      opParams.valveInstalled = DEFAULT_VALVE_INSTALLED_STATE;
       opParams.sptDuration = DEFAULT_SPT_TEST_DURATION_MINUTES;
       if (paramFileObj.write((uint8_t *)&opParams, sizeof(opParams)) > 0)
         Serial.printf("Parameters file re-created: %s, %d bytes\n", paramFileObj.name(), paramFileObj.size());
@@ -709,11 +732,12 @@ void setup()
   { // fill it with default values
     Serial.println(F("No parameters file detected. Using default values."));
     strcpy(opParams.version, VERSION);
+    opParams.valveInstalled = INITIAL_VALVE_INSTALLED_STATE;
+    opParams.pressureInstalled = INITIAL_PRESSURE_SENSOR_INSTALLED_STATE;
     opParams.idlePublishInterval = DEFAULT_IDLE_PUBLISH_INTERVAL_MS;
     opParams.minPublishInterval = DEFAULT_MIN_PUBLISH_INTERVAL_MS;
     opParams.sensorReadInterval = DEFAULT_SENSOR_READ_INTERVAL_MS;
     opParams.pressureChange = (float)DEFAULT_PRESSURE_CHANGE_PSI;
-    opParams.valveInstalled = DEFAULT_VALVE_INSTALLED_STATE;
     opParams.sptDuration = DEFAULT_SPT_TEST_DURATION_MINUTES;
 
     paramFileObj = LittleFS.open(F(PARAMS_FILENAME), "w+");
@@ -755,6 +779,7 @@ void loop()
     mqttClient.loop();
   }
 
+  // Sync valve state
   if (opParams.valveInstalled == 1)
   {
     // Periodically check to sync software valveState with actual indicator inputs in case manual valve switch was used
@@ -790,99 +815,104 @@ void loop()
     }
   }
 
-  // Sanity check to prevent MQTT flooding - reset ALL to defaults if deemed insane
+  // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters deemed insane
   if ((opParams.idlePublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
        || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).1) || (opParams.sptDuration < 5))
   {
     Serial.printf("Parameters loaded from file %s \n", PARAMS_FILENAME);
-    Serial.printf("{\"version\": \"%s\", \"idlePublishInterval\": \"%d\", \"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", "
-                  "\"pressureChange\": \"%.2f\", \"valveInstalled\": \"%d\", \"sptDuration\": \"%d\"}\n\n",
-                  opParams.version, opParams.idlePublishInterval, opParams.minPublishInterval,
-                  opParams.sensorReadInterval, opParams.pressureChange, opParams.valveInstalled, opParams.sptDuration);
+    Serial.printf("{\"version\": \"%s\", \"valveInstalled\": \"%d\", \"pressureInstalled\": \"%d\", \"idlePublishInterval\": \"%d\", "
+                  "\"minPublishInterval\": \"%d\", \"sensorReadInterval\": \"%d\", \"pressureChange\": \"%.2f\", \"sptDuration\": \"%d\"}\n\n",
+                  opParams.version, opParams.valveInstalled, opParams.pressureInstalled, opParams.idlePublishInterval, opParams.minPublishInterval,
+                  opParams.sensorReadInterval, opParams.pressureChange, opParams.sptDuration);
     strcpy(opParams.version, VERSION);
+    opParams.valveInstalled = INITIAL_VALVE_INSTALLED_STATE;
+    opParams.pressureInstalled = INITIAL_PRESSURE_SENSOR_INSTALLED_STATE;
     opParams.idlePublishInterval = DEFAULT_IDLE_PUBLISH_INTERVAL_MS;
     opParams.minPublishInterval = DEFAULT_MIN_PUBLISH_INTERVAL_MS;
     opParams.sensorReadInterval = DEFAULT_SENSOR_READ_INTERVAL_MS;
     opParams.pressureChange = (float)DEFAULT_PRESSURE_CHANGE_PSI;
-    opParams.valveInstalled = DEFAULT_VALVE_INSTALLED_STATE;
     opParams.sptDuration = DEFAULT_SPT_TEST_DURATION_MINUTES;
-    Serial.println(F("PARAMETER SANITY CHECK FAILED.  All paramaters reset to defaults. "));
+    Serial.println(F("PARAMETER SANITY CHECK FAILED.  All parameters reset to defaults. "));
   }
 
+
   // Read sensor
-  sensorStatus = 0xFF; // set to non-zero for initial read
-  sensorReadNow = millis();
-  if ((unsigned long)(sensorReadNow - lastRead) > opParams.sensorReadInterval)
+  if (opParams.pressureInstalled == 1)
   {
-    lastRead = millis();
-    while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
+    sensorStatus = 0xFF; // set to non-zero for initial read
+    sensorReadNow = millis();
+    if ((unsigned long)(sensorReadNow - lastRead) > opParams.sensorReadInterval)
     {
-      int n = Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes
-      if (n == 4)
+      lastRead = millis();
+      while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
       {
-        sensorStatus = 1;
-        uint16_t rawP; // pressure data from sensor
-        uint16_t rawT; // temperature data from sensor
+        int n = Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes
+        if (n == 4)
+        {
+          sensorStatus = 1;
+          uint16_t rawP; // pressure data from sensor
+          uint16_t rawT; // temperature data from sensor
 
-        rawP = (uint16_t)Wire.read(); // upper 8 bits
-        rawP <<= 8;
-        rawP |= (uint16_t)Wire.read(); // lower 8 bits
-        rawT = (uint16_t)Wire.read();  // upper 8 bits
-        rawT <<= 8;
-        rawT |= (uint16_t)Wire.read(); // lower 8 bits
+          rawP = (uint16_t)Wire.read(); // upper 8 bits
+          rawP <<= 8;
+          rawP |= (uint16_t)Wire.read(); // lower 8 bits
+          rawT = (uint16_t)Wire.read();  // upper 8 bits
+          rawT <<= 8;
+          rawT |= (uint16_t)Wire.read(); // lower 8 bits
 
-        sensorStatus = rawP >> 14; // The status is 0, 1, 2 or 3
-        rawP &= 0x3FFF;            // keep 14 bits, remove status bits
+          sensorStatus = rawP >> 14; // The status is 0, 1, 2 or 3
+          rawP &= 0x3FFF;            // keep 14 bits, remove status bits
 
-        rawT >>= 5; // the lowest 5 bits are not used
+          rawT >>= 5; // the lowest 5 bits are not used
 
-        psiTminus0 = ((rawP - 1000.0) / (15000.0 - 1000.0)) * MAX_PRESSURE;
-        temperature = ((rawT - 512.0) / (1075.0 - 512.0)) * 55.0;
+          psiTminus0 = ((rawP - 1000.0) / (15000.0 - 1000.0)) * MAX_PRESSURE;
+          temperature = ((rawT - 512.0) / (1075.0 - 512.0)) * 55.0;
+        }
+        else
+        {
+          lastPressErrReportNow = millis();
+          if ((unsigned long)(lastPressErrReportNow - lastPressErrReport) > (unsigned long)PRESSURE_SENSOR_FAULT_PUB_INTERVAL_MS)
+          {
+            Serial.println(F("Error reading pressure sensor"));
+            mqttClient.publish(PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str(), true);
+            Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str());
+            lastPressErrReport = millis();
+          }
+          break;
+        }
+      }
+    }
+
+    lastPublishNow = millis();
+    if (((unsigned long)(lastPublishNow - lastPublish) > opParams.idlePublishInterval) ||
+        (((fabs(psiTminus1 - psiTminus0) > opParams.pressureChange) && (lastPublishNow - lastPublish >= opParams.minPublishInterval)) &&
+        mqttClient.connected()))
+    {
+      // use MEDIAN of last three readings to filter glitches - psiTminus0 is latest reading, psiTminus2 is oldest
+      if ((psiTminus1 != 0) && (psiTminus2 != 0))
+      {
+        if ((psiTminus1 > psiTminus2 && psiTminus2 > psiTminus0) || (psiTminus0 > psiTminus2 && psiTminus2 > psiTminus1))
+          medianPressure = psiTminus2;
+        if ((psiTminus2 > psiTminus1 && psiTminus1 > psiTminus0) || (psiTminus0 > psiTminus1 && psiTminus1 > psiTminus2))
+          medianPressure = psiTminus1;
+        if ((psiTminus2 > psiTminus0 && psiTminus0 > psiTminus1) || (psiTminus1 > psiTminus0 && psiTminus0 > psiTminus2))
+          medianPressure = psiTminus0;
       }
       else
       {
-        lastPressErrReportNow = millis();
-        if ((unsigned long)(lastPressErrReportNow - lastPressErrReport) > (unsigned long)PRESSURE_SENSOR_FAULT_PUB_INTERVAL_MS)
-        {
-          Serial.println(F("Error reading pressure sensor"));
-          mqttClient.publish(PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str(), true);
-          Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str());
-          lastPressErrReport = millis();
-        }
-        break;
-      }
-    }
-  }
-
-  lastPublishNow = millis();
-  if (((unsigned long)(lastPublishNow - lastPublish) > opParams.idlePublishInterval) ||
-      (((fabs(psiTminus1 - psiTminus0) > opParams.pressureChange) && (lastPublishNow - lastPublish >= opParams.minPublishInterval)) &&
-       mqttClient.connected()))
-  {
-    // use MEDIAN of last three readings to filter glitches - psiTminus0 is latest reading, psiTminus2 is oldest
-    if ((psiTminus1 != 0) && (psiTminus2 != 0))
-    {
-      if ((psiTminus1 > psiTminus2 && psiTminus2 > psiTminus0) || (psiTminus0 > psiTminus2 && psiTminus2 > psiTminus1))
-        medianPressure = psiTminus2;
-      if ((psiTminus2 > psiTminus1 && psiTminus1 > psiTminus0) || (psiTminus0 > psiTminus1 && psiTminus1 > psiTminus2))
-        medianPressure = psiTminus1;
-      if ((psiTminus2 > psiTminus0 && psiTminus0 > psiTminus1) || (psiTminus1 > psiTminus0 && psiTminus0 > psiTminus2))
         medianPressure = psiTminus0;
+      }
+      sprintf(msg, "%.2f", medianPressure);
+      mqttClient.publish(PRESSURE_TOPIC, msg);
+      Serial.printf("\n%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_TOPIC, msg);
+      if (PREFER_FAHRENHEIT == 1)
+        temperature = (1.8 * temperature + 32);
+      sprintf(msg, "%.2f", temperature);
+      mqttClient.publish(TEMPERATURE_TOPIC, msg);
+      Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), TEMPERATURE_TOPIC, msg);
+      lastPublish = millis();
+      psiTminus2 = psiTminus1; // rotate queue
+      psiTminus1 = psiTminus0;
     }
-    else
-    {
-      medianPressure = psiTminus0;
-    }
-    sprintf(msg, "%.2f", medianPressure);
-    mqttClient.publish(PRESSURE_TOPIC, msg);
-    Serial.printf("\n%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_TOPIC, msg);
-    if (PREFER_FAHRENHEIT)
-      temperature = (1.8 * temperature + 32);
-    sprintf(msg, "%.2f", temperature);
-    mqttClient.publish(TEMPERATURE_TOPIC, msg);
-    Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), TEMPERATURE_TOPIC, msg);
-    lastPublish = millis();
-    psiTminus2 = psiTminus1; // rotate queue
-    psiTminus1 = psiTminus0;
   }
 }
