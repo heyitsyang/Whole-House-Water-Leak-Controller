@@ -413,19 +413,20 @@ void callback(char *topic, byte *payload, unsigned int length)
 
   // All commands must be prefixed with RECV_COMMAND_TOPIC
   // Valid commands:
-  //   valveInstalled/<new_value>       - assigns a <new value>, but does not save to NVM
-  //   pressureInstalled/<new_value>    - assigns a <new value>, but does not save to NVM
-  //   idlePublishInterval/<new value>  - assigns a <new value>, but does not save to NVM
-  //   minPublishInterval/<new value>   - assigns a <new value>, but does not save to NVM
-  //   sensorReadInterval/<new value>   - assigns a <new value>, but does not save to NVM
-  //   sptDuration/<new value>          - assigns a <new value> in minutes, but does not save to NVM
+  //   valveInstalled/<new_value>       - assigns a <new_value>, but does not save to NVM
+  //   pressureInstalled/<new_value>    - assigns a <new_value>, but does not save to NVM
+  //   idlePublishInterval/<new_value>  - assigns a <new_value>, but does not save to NVM
+  //   minPublishInterval/<new_value>   - assigns a <new_value>, but does not save to NVM
+  //   sensorReadInterval/<new_value>   - assigns a <new_value>, but does not save to NVM
+  //   sptDuration/<new_value>          - assigns a <new_value> in minutes, but does not save to NVM
+  //   valveState/<new_value>           - 1 = OPEN, 0 = CLOSED, assigns and SAVES new value to NVM
   //   sptStart       - starts the Static Pressure Test
   //   reportParams   - publishes parameters to REPORT_TOPIC replacing previous retained report on broker
   //   defaultParams  - sets parameters to default firmware values, but does not save to NVM
   //   readParams     - reads parameters from NVM storage, but does not save to NVM
   //   writeParams    - saves current parameters to NVM storage
   //   deleteParams   - deletes parameters stored in NVM storage to force creation at next boot
-  //   valveState     - 1 = OPEN, 0 = CLOSED
+ 
   //   reboot         - reboots device
   //   help           - sends list of valid commands
 
