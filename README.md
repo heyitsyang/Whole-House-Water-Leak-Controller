@@ -147,7 +147,7 @@ Installed project.  Leftmost avaition connector is currently unused.
 
 You will need to print the bottom, the lid, and one of the two slide-in mounts depending on desired final orientation.
 
-- The circuit diagram shows the WeMos ESP8266 D1 Mini ESP8266 board right side up for clarity, but it is mounted upside-down in the enclosure for assembly.  Be aware of this before you start wiring.
+- The wiring diagram above shows the WeMos ESP8266 D1 Mini ESP8266 board right side up for clarity, but it is mounted upside-down in the enclosure for assembly.  Be aware of this before you start wiring.
 
 
 
