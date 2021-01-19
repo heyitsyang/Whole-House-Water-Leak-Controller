@@ -130,16 +130,16 @@ Note the aviation connectors below are specified with different number of pins t
 <br/><br/>
 ### Wiring & Assembly
 
-Wiring Diagram
+Wiring Diagram - The Wemos D1 Mini ESP8266 device is shown right side up in the diagram below, but will be mounted upside down in the 3D printed enclosure.
 ![Circuit Diagram](images/Wiring_Diagram.jpg)
 <br/><br/> 
 
-Components mounted in 3D printed case.  Note the color of wires do not match those of the above diagram.  The indicator LED is mounted above the manual valve control on the right side.  The leftmost aviation connector is  currently unused.
+Components mounted in 3D printed case - Note the color of wires do not match those of the above diagram.  The indicator LED is mounted above the manual valve control on the right side.  The leftmost aviation connector is  currently unused.
 
 ![Components](images/Components.jpg)
 <br/><br/> 
 
-Installed project.  Leftmost avaition connector is currently unused.
+Installed project - Leftmost avaition connector is currently unused.
 ![Installed](images/Installed.jpg)
 <br/><br/>
 ## **3D Printed Enclosure**
@@ -147,7 +147,7 @@ Installed project.  Leftmost avaition connector is currently unused.
 
 You will need to print the bottom, the lid, and one of the two slide-in mounts depending on desired final orientation.
 
-- The circuit diagram shows the WeMos ESP8266 D1 Mini ESP8266 board right side up for clarity, but it is mounted upside-down in the enclosure for assembly.  Be aware of this before you start wiring.
+- The wiring diagram above shows the WeMos ESP8266 D1 Mini ESP8266 board right side up for clarity, but it is mounted upside-down in the enclosure for assembly.  Be aware of this before you start wiring.
 
 
 
