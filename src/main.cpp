@@ -284,17 +284,17 @@ void endSPT()
 {
   Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), medianPressure);
   sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
-  mqttClient.publish(SPT_RESULT_TOPIC, msg);
+  mqttClient.publish(SPT_RESULT_TOPIC, msg, true);
   Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
 
   sprintf(msg, "{\"test_start\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
         myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
-  mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg);
+  mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, true);
   Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
   sptDataReady = SPT_DATA_READY;
   sprintf(msg, "%d", sptDataReady);
-  mqttClient.publish(SPT_DATA_READY_TOPIC, msg);
+  mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
   Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
 
   valveState = valvePreSPT;
@@ -514,7 +514,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
       sptDataReady = SPT_IN_PROCESS;
       sprintf(msg, "%d", sptDataReady);
-      mqttClient.publish(SPT_DATA_READY_TOPIC, msg);
+      mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
       Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
       
       valvePreSPT = valveState;
@@ -527,7 +527,7 @@ void callback(char *topic, byte *payload, unsigned int length)
 
       sptDataReady = SPT_IN_PROCESS;
       sprintf(msg, "%d", sptDataReady);
-      mqttClient.publish(SPT_DATA_READY_TOPIC, msg);
+      mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
       Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
 
       sptBeginningPressure = medianPressure;
