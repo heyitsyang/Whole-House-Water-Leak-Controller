@@ -140,7 +140,7 @@ Components mounted in 3D printed case - Note the color of wires do not match tho
 <br/><br/> 
 
 Installed project - Leftmost avaition connector is currently unused.
-![Installed](images/Installed.jpg)
+![Complete](images/Final_Installation.jpg)
 <br/><br/>
 ## **3D Printed Enclosure**
 3D Printing files and the Fusion360 source file are available in this repository under the 3D_Printed_Enclosure directory.  I printed my enclosure using PETG to avoid potential shrinkage issues surrounding the snap-on lid, but there is nothing special about PETG otherwise.  Both STL and Fusion360 files are provided.  If you don't have a 3D printer, there are many services available online that will print for a fee.
