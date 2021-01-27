@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0"
+#define VERSION "Ver 3.0 build 2021.01.27"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -99,7 +99,7 @@ unsigned int pre_spt_idlePublishInterval;
 
 struct Parameters
 {
-  char version[15];
+  char version[30];
   unsigned int valveInstalled;
   unsigned int pressureInstalled;
   unsigned int idlePublishInterval;
@@ -528,7 +528,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         yield();
 
       pre_spt_idlePublishInterval = opParams.idlePublishInterval;
-      opParams.idlePublishInterval = 30;  // temporarily report every 30 secs during SPT
+      opParams.idlePublishInterval = 30000;  // temporarily report every 30 secs during SPT
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
@@ -817,7 +817,7 @@ void loop()
   }
 
   // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters deemed insane
-  if ((opParams.idlePublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
+  if ((opParams.idlePublishInterval < 10000) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
        || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).2) || (opParams.sptDuration < 1))
   {
     Serial.printf("Parameters loaded from file %s \n", PARAMS_FILENAME);
