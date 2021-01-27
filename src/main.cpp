@@ -528,7 +528,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         yield();
 
       pre_spt_idlePublishInterval = opParams.idlePublishInterval;
-      opParams.idlePublishInterval = 30;  // temporarily report every 30 secs during SPT
+      opParams.idlePublishInterval = 30000;  // temporarily report every 30 secs during SPT
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
@@ -817,7 +817,7 @@ void loop()
   }
 
   // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters deemed insane
-  if ((opParams.idlePublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
+  if ((opParams.idlePublishInterval < 10000) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
        || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).2) || (opParams.sptDuration < 1))
   {
     Serial.printf("Parameters loaded from file %s \n", PARAMS_FILENAME);
