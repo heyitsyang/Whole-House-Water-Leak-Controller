@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0"
+#define VERSION "Ver 3.0 build 2021.01.27"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -99,7 +99,7 @@ unsigned int pre_spt_idlePublishInterval;
 
 struct Parameters
 {
-  char version[15];
+  char version[30];
   unsigned int valveInstalled;
   unsigned int pressureInstalled;
   unsigned int idlePublishInterval;
