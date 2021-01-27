@@ -817,7 +817,7 @@ void loop()
   }
 
   // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters deemed insane
-  if ((opParams.idlePublishInterval < 10000) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
+  if ((opParams.idlePublishInterval < DEFAULT_MIN_PUBLISH_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
        || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).2) || (opParams.sptDuration < 1))
   {
     Serial.printf("Parameters loaded from file %s \n", PARAMS_FILENAME);
