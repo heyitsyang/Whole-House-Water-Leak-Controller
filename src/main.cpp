@@ -95,6 +95,7 @@ unsigned long tempNow, lastPublishNow, sensorReadNow, mqttNow, valveNow, lastVal
 byte sensorStatus;
 float psiTminus0, psiTminus1, psiTminus2;            // psiTminus0 is the current pressure, psiTminus1 is the previous, psiTminus2 is the one before
 float medianPressure, sptBeginningPressure, temperature;
+unsigned int pre_spt_idlePublishInterval;
 
 struct Parameters
 {
@@ -292,6 +293,7 @@ void endSPT()
   mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, true);
   Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
+  opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
   sptDataReady = SPT_DATA_READY;
   sprintf(msg, "%d", sptDataReady);
   mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
@@ -525,17 +527,14 @@ void callback(char *topic, byte *payload, unsigned int length)
       while (millis() - valveNow < PRESSURE_SETTLING_DELAY_MS) // wait for pressure to settle
         yield();
 
-      sptDataReady = SPT_IN_PROCESS;
-      sprintf(msg, "%d", sptDataReady);
-      mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
-      Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
-
+      pre_spt_idlePublishInterval = opParams.idlePublishInterval;
+      opParams.idlePublishInterval = 30;  // temporarily report every 30 secs during SPT
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
     }
     else
-      Serial.println("Invalid request - both valve and pressure sensor must be installed");
+      Serial.println("Invalid request - both valve and pressure sensor must be installed for SPT");
   }
   if (strstr(topic, "valveState")) // set valve 0=closed 1=open
   {
@@ -892,11 +891,12 @@ void loop()
     }
 
     lastPublishNow = millis();
-    if (((unsigned long)(lastPublishNow - lastPublish) > opParams.idlePublishInterval) ||
-        (((fabs(psiTminus1 - psiTminus0) > opParams.pressureChange) && (lastPublishNow - lastPublish >= opParams.minPublishInterval)) &&
-        mqttClient.connected()))
+    if (  ( ((unsigned long)(lastPublishNow - lastPublish) > opParams.idlePublishInterval) ||
+        ((fabs(psiTminus1 - psiTminus0) > opParams.pressureChange) && (lastPublishNow - lastPublish >= opParams.minPublishInterval)) ) &&
+        mqttClient.connected()  )
     {
       // use MEDIAN of last three readings to filter glitches - psiTminus0 is latest reading, psiTminus2 is oldest
+      // MEDIAN is the middle of the last three readings - not the average
       if ((psiTminus1 != 0) && (psiTminus2 != 0))
       {
         if ((psiTminus1 > psiTminus2 && psiTminus2 > psiTminus0) || (psiTminus0 > psiTminus2 && psiTminus2 > psiTminus1))
