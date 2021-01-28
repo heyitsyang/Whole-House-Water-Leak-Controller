@@ -43,7 +43,7 @@ A Static Pressure Test is initiated by sending the *sptStartTest* MQTT command (
 
 Results are published via MQTT at the end of the test.  It is up to an external process to determine if the test passed, failed, or  invalid due to water use or hot water heater activity.  In my case the external process is done in Home Assistant.
 - Default SPT duration is 10 minutes
-- Pressure reporting frequency is set to every 30 seconds.  Reporting frequency is restored to pre-test frequency at the end of the test.
+- Pressure reporting frequency is set to every 30 seconds during SPT.  Reporting frequency is restored to pre-test frequency when the test concludes.
 - Valve is closed at the start and restored to pre-test state at end of test
 - Timestamp of start of test, test duration, beginning pressure, ending pressure, and the difference is published via MQTT at the *end* of the test
 
