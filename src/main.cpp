@@ -283,22 +283,33 @@ boolean applyValveState(int desiredState, boolean writeFlag) // this routine use
 //   ***********************
 void endSPT()
 {
-  Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), medianPressure);
-  sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
-  mqttClient.publish(SPT_RESULT_TOPIC, msg, true);
-  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
+  if (valveState == 0)  // SPT terminated normally
+  {
+    // Publish result
+    Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), medianPressure);
+    sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
+    mqttClient.publish(SPT_RESULT_TOPIC, msg, true);  
+    Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
 
-  sprintf(msg, "{\"test_start\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
-        myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
-  mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, true);
-  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
+    // Publish attributes
+    sprintf(msg, "{\"test_start\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
+          myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
+    mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, true);
+    Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
+    // Publish data ready
+    sptDataReady = SPT_DATA_READY;
+    sprintf(msg, "%d", sptDataReady);
+    mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
+    Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
+  }
+  else  // manual intervention occured, so test is not valid - results not published
+  {
+    Serial.println(F("SPT invalid - valve was prematurely opened"));
+  }
+
+  // Restore previous states
   opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
-  sptDataReady = SPT_DATA_READY;
-  sprintf(msg, "%d", sptDataReady);
-  mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
-  Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
-
   valveState = valvePreSPT;
   applyValveState(valvePreSPT, false);                       // restore the valveState to state before test
 }
