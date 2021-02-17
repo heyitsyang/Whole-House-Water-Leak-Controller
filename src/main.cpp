@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0 build 2021.01.29"
+#define VERSION "Ver 3.0 build 2021.02.17"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -124,7 +124,7 @@ Timezone myTZ;
 
 void setup_wifi()
 {
-  delay(10);
+  delay(10); // let Serial comm stream start before using it
 
   // We start by connecting to a WiFi network
 
@@ -620,8 +620,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     cmdValid = true;
     Serial.println(F("MQTT reboot command received.  Rebooting..."));
     tempNow = millis();
-    while ((millis() - tempNow) < 5000)
-      ;
+    while ((millis() - tempNow) < 5000) ;
     mqttClient.disconnect();
     paramFileObj.close();
     valveFileObj.close();
@@ -857,17 +856,17 @@ void loop()
   // Read sensor
   if (opParams.pressureInstalled == 1)
   {
-    sensorStatus = 0xFF; // set to non-zero for initial read
+    sensorStatus = 0xFF; // set to non-zero for initial while() test
     sensorReadNow = millis();
     if ((unsigned long)(sensorReadNow - lastRead) > opParams.sensorReadInterval)
     {
       lastRead = millis();
       while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
       {
-        int n = Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes
+        int n = Wire.requestFrom(I2C_ADDR, 4, true); // request 4 bytes  false = don't share i2c bus
         if (n == 4)
         {
-          sensorStatus = 1;
+          sensorStatus = 0xFF;
           uint16_t rawP; // pressure data from sensor
           uint16_t rawT; // temperature data from sensor
 
@@ -896,6 +895,7 @@ void loop()
             Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str());
             lastPressErrReport = millis();
           }
+          while ((millis() - lastPressErrReportNow) < 1000); // prevent cycling too fast
           break;
         }
       }
