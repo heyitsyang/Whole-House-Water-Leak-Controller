@@ -77,7 +77,7 @@
 #define VALVE_SYNC_INTERVAL_MS 30000                 // how often actual valve switch will be checked & synced with software valveState (in case manual button has been used)
 #define DEFAULT_IDLE_PUBLISH_INTERVAL_MS 300000      // how often sensor data is published if no event driven changes
 #define DEFAULT_MIN_PUBLISH_INTERVAL_MS 5000         // don't publish more often than this
-#define PRESSURE_SENSOR_FAULT_PUB_INTERVAL_MS 300000 // how often a pressure sensor error (timestmap) is published if error condition true
+#define PRESSURE_SENSOR_FAULT_PUB_INTERVAL_MS 60000  // how often a pressure sensor error (timestmap) is published if error condition true
 #define DEFAULT_SENSOR_READ_INTERVAL_MS 500          // how often the sensor is read (how soon PSI changes are recognized)
 #define DEFAULT_PRESSURE_CHANGE_PSI .3               // amount of change in PSI to initiate a publishing event
 #define PREFER_FAHRENHEIT 1                          // temperature reported in Celsius unless this is set to 1
