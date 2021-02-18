@@ -863,7 +863,7 @@ void loop()
       lastRead = millis();
       while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
       {
-        int n = Wire.requestFrom(I2C_ADDR, 4, true); // request 4 bytes  false = don't share i2c bus
+        int n = Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes  - if optional 3rd argument false = don't share i2c bus
         if (n == 4)
         {
           sensorStatus = 0xFF;
