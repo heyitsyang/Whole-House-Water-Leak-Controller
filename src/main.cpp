@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0 build 2021.02.18"
+#define VERSION "Ver 3.0 build 2021.02.19"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -384,7 +384,7 @@ boolean reconnect()
       }
     }
 
-    // Publish announcements...
+    // Publish MQTT announcements...
 
     mqttClient.publish(LWT_TOPIC, "Connected", true); // let broker know we're connected
     Serial.printf("\n%s MQTT SENT: %s/Connected\n", myTZ.dateTime("[H:i:s.v]").c_str(), LWT_TOPIC);
@@ -863,7 +863,9 @@ void loop()
       lastRead = millis();
       while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
       {
-        int n = Wire.requestFrom(I2C_ADDR, 4, true); // request 4 bytes  false = don't share i2c bus
+        
+        Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes  - if optional 3rd argument false = don't share i2c bus
+        int n = Wire.available();
         if (n == 4)
         {
           sensorStatus = 0xFF;
