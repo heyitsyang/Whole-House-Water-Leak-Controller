@@ -826,7 +826,7 @@ void loop()
     }
   }
 
-  // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters deemed insane
+  // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters seem corrupted
   if ((opParams.idlePublishInterval < DEFAULT_MIN_PUBLISH_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
        || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).2) || (opParams.sptDuration < 1))
   {
@@ -861,9 +861,9 @@ void loop()
     if ((unsigned long)(sensorReadNow - lastRead) > opParams.sensorReadInterval)
     {
       lastRead = millis();
-      while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
+//      while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
+      while (sensorStatus != 0) // continue reading until valid
       {
-        
         Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes  - if optional 3rd argument false = don't share i2c bus
         int n = Wire.available();
         if (n == 4)
@@ -897,7 +897,7 @@ void loop()
             Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str());
             lastPressErrReport = millis();
           }
-          while ((millis() - lastPressErrReportNow) < 1000); // prevent cycling too fast
+          while ((millis() - lastPressErrReportNow) < 10000); // prevent cycling too fast
           break;
         }
       }
