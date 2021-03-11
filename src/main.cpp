@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0 build 2021.02.28"
+#define VERSION "Ver 3.0 build 2021.03.09"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -71,7 +71,7 @@
 #define VALVE_STATE_FILENAME "/valve_state.bin"
 #define OPEN_VALVE 1
 #define CLOSE_VALVE 0
-#define PRESSURE_SETTLING_DELAY_MS 5000              // wait for pressure to settle a bit after closing valve for SPT
+#define PRESSURE_SETTLING_DELAY_MS 2000              // wait for pressure to settle a bit after closing valve for SPT
 #define VALVE_ROTATION_TIME_MS 10000                 // time required for valve to open/close - relays are only active long enough for the valve to rotate
 #define VALVE_ERROR_DISPOSITION 0                    // 0=CLOSED, 1=OPEN - how the valve will default if everything goes badly - also used if manual switch has left valve between OPEN/CLOSED
 #define VALVE_SYNC_INTERVAL_MS 30000                 // how often actual valve switch will be checked & synced with software valveState (in case manual button has been used)
@@ -826,7 +826,7 @@ void loop()
     }
   }
 
-  // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters deemed insane
+  // Sanity check to prevent MQTT flooding - reset ALL to defaults if parameters seem corrupted
   if ((opParams.idlePublishInterval < DEFAULT_MIN_PUBLISH_INTERVAL_MS) || (opParams.minPublishInterval < DEFAULT_SENSOR_READ_INTERVAL_MS) 
        || (opParams.sensorReadInterval < 3) || (opParams.pressureChange <= (float).2) || (opParams.sptDuration < 1))
   {
@@ -861,14 +861,14 @@ void loop()
     if ((unsigned long)(sensorReadNow - lastRead) > opParams.sensorReadInterval)
     {
       lastRead = millis();
-      while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
+//      while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
+      while (sensorStatus != 0) // continue reading until valid
       {
-        
         Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes  - if optional 3rd argument false = don't share i2c bus
         int n = Wire.available();
         if (n == 4)
         {
-          sensorStatus = 0xFF;
+          sensorStatus = 0;  // set to zero to exit while loop when read is successful
           uint16_t rawP; // pressure data from sensor
           uint16_t rawT; // temperature data from sensor
 
@@ -897,7 +897,7 @@ void loop()
             Serial.printf("%s MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), PRESSURE_SENSOR_FAULT_TOPIC, myTZ.dateTime(RFC3339).c_str());
             lastPressErrReport = millis();
           }
-          while ((millis() - lastPressErrReportNow) < 1000); // prevent cycling too fast
+          while ((millis() - lastPressErrReportNow) < opParams.sensorReadInterval); // prevent cycling too fast
           break;
         }
       }
