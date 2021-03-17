@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0 build 2021.03.09"
+#define VERSION "Ver 3.0 build 2021.03.17"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -539,7 +539,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         yield();
 
       pre_spt_idlePublishInterval = opParams.idlePublishInterval;
-      opParams.idlePublishInterval = 30000;  // temporarily report every 30 secs during SPT
+      opParams.idlePublishInterval = 15000;  // temporarily report every 15 secs during SPT
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
