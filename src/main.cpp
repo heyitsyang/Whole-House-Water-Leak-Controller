@@ -539,7 +539,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         yield();
 
       pre_spt_idlePublishInterval = opParams.idlePublishInterval;
-      opParams.idlePublishInterval = 30000;  // temporarily report every 30 secs during SPT
+      opParams.idlePublishInterval = 15000;  // temporarily report every 15 secs during SPT
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
