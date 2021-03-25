@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0 build 2021.03.17"
+#define VERSION "Ver 3.0 build 2021.03.25"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -76,7 +76,8 @@
 #define VALVE_ERROR_DISPOSITION 0                    // 0=CLOSED, 1=OPEN - how the valve will default if everything goes badly - also used if manual switch has left valve between OPEN/CLOSED
 #define VALVE_SYNC_INTERVAL_MS 30000                 // how often actual valve switch will be checked & synced with software valveState (in case manual button has been used)
 #define DEFAULT_IDLE_PUBLISH_INTERVAL_MS 300000      // how often sensor data is published if no event driven changes
-#define DEFAULT_MIN_PUBLISH_INTERVAL_MS 5000         // don't publish more often than this
+#define DEFAULT_MIN_PUBLISH_INTERVAL_MS 5000         // don't publish more often than this in non-SPT operation
+#define SPT_MIN_PUBLISH_INTERVAL_MS 1000             // don't publish more often than this during SPT
 #define PRESSURE_SENSOR_FAULT_PUB_INTERVAL_MS 60000  // how often a pressure sensor error (timestmap) is published if error condition true
 #define DEFAULT_SENSOR_READ_INTERVAL_MS 500          // how often the sensor is read (how soon PSI changes are recognized)
 #define DEFAULT_PRESSURE_CHANGE_PSI .3               // amount of change in PSI to initiate a publishing event
@@ -95,7 +96,7 @@ unsigned long tempNow, lastPublishNow, sensorReadNow, mqttNow, valveNow, lastVal
 byte sensorStatus;
 float psiTminus0, psiTminus1, psiTminus2;            // psiTminus0 is the current pressure, psiTminus1 is the previous, psiTminus2 is the one before
 float medianPressure, sptBeginningPressure, temperature;
-unsigned int pre_spt_idlePublishInterval;
+unsigned int pre_spt_idlePublishInterval, pre_spt_minPublishInterval;
 
 struct Parameters
 {
@@ -310,6 +311,7 @@ void endSPT()
 
   // Restore previous states
   opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
+  opParams.minPublishInterval = pre_spt_minPublishInterval; // restore minPublishInterval
   valveState = valvePreSPT;
   applyValveState(valvePreSPT, false);                       // restore the valveState to state before test
 }
@@ -539,7 +541,9 @@ void callback(char *topic, byte *payload, unsigned int length)
         yield();
 
       pre_spt_idlePublishInterval = opParams.idlePublishInterval;
-      opParams.idlePublishInterval = 15000;  // temporarily report every 15 secs during SPT
+      pre_spt_minPublishInterval = opParams.minPublishInterval;
+      opParams.idlePublishInterval = 15000;  // temporarily report every 15 secs during SPT if idle
+      opParams.minPublishInterval = SPT_MIN_PUBLISH_INTERVAL_MS;  // set to shorter interval during SPT
       sptBeginningPressure = medianPressure;
       Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
       setEvent(endSPT, now() + (opParams.sptDuration * 60)); // set event time
