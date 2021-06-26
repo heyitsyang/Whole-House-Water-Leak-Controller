@@ -83,8 +83,10 @@
 #define DEFAULT_PRESSURE_CHANGE_PSI .3               // amount of change in PSI to initiate a publishing event
 #define PREFER_FAHRENHEIT 1                          // temperature reported in Celsius unless this is set to 1
 #define DEFAULT_SPT_TEST_DURATION_MINUTES 10         // duration of Static Pressure Test (valve off & observe pressure change)
-#define SPT_DATA_READY 1
-#define SPT_IN_PROCESS 0
+#define SPT_DATA_IN_PROCESS 0                        // SPT test is in process and the reported SPT result is old
+#define SPT_DATA_READY 1                             // SPT test has completed normally and the SPT result is valid
+#define SPT_DATA_INVALID 2                           // SPT test has terminated abnormally and resultant data is not valid (test must be run again)
+
 
 #define TIMEZONE_EEPROM_OFFSET 0                     // location-to-timezone info - saved in case eztime server is down
 
@@ -113,7 +115,7 @@ struct Parameters
 struct Parameters opParams;
 
 byte valvePreSPT, valveState = VALVE_ERROR_DISPOSITION; // if all saved data is lost VALVE_ERROR_DISPOSITION is the valve setting
-byte sptDataReady = SPT_IN_PROCESS;
+byte sptDataStatus = SPT_DATA_IN_PROCESS;
 File paramFileObj, valveFileObj;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -299,10 +301,10 @@ void endSPT()
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
     // Publish data ready
-    sptDataReady = SPT_DATA_READY;
-    sprintf(msg, "%d", sptDataReady);
+    sptDataStatus = SPT_DATA_READY;
+    sprintf(msg, "%d", sptDataStatus);
     mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
-    Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
+    Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
   }
   else  // manual intervention occured, so test is not valid - results not published
   {
@@ -527,10 +529,10 @@ void callback(char *topic, byte *payload, unsigned int length)
     cmdValid = true;
     if ( (opParams.valveInstalled == 1) && (opParams.pressureInstalled == 1) )
     {
-      sptDataReady = SPT_IN_PROCESS;
-      sprintf(msg, "%d", sptDataReady);
+      sptDataStatus = SPT_DATA_IN_PROCESS;
+      sprintf(msg, "%d", sptDataStatus);
       mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
-      Serial.printf("%s sptDataReady = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataReady);
+      Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
       
       valvePreSPT = valveState;
       valveState = CLOSE_VALVE;
