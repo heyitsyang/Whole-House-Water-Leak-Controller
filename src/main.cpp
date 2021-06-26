@@ -772,7 +772,7 @@ void loop()
 {
 
   ArduinoOTA.handle();
-  events(); // process ezTime events i.e. Static Pressure Test
+  events(); // exececute ezTime events i.e. Static Pressure Test
 
   if (!mqttClient.connected())
   {
@@ -865,7 +865,6 @@ void loop()
     if ((unsigned long)(sensorReadNow - lastRead) > opParams.sensorReadInterval)
     {
       lastRead = millis();
-//      while (sensorStatus != 0 || psiTminus0 <= 0 || temperature <= 0) // continue reading until valid
       while (sensorStatus != 0) // continue reading until valid
       {
         Wire.requestFrom(I2C_ADDR, 4); // request 4 bytes  - if optional 3rd argument false = don't share i2c bus
