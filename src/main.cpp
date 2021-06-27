@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.0 build 2021.03.25"
+#define VERSION "Ver 3.1 build 2021.06.26"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -60,7 +60,7 @@
 #define PRESSURE_SENSOR_FAULT_TOPIC "watermain/report/last_press_sensor_fault" // sends timestamp if pressure error can't be read
 #define VALVE_TOPIC "watermain/valve_zeroisclosed"                             // valve position 0 = closed, 1= open
 #define LAST_VALVE_STATE_UNK_TOPIC "watermain/report/last_unk_valve_state"     // send timestamp if valve state cannot be determined from indicator inputs
-#define SPT_DATA_READY_TOPIC "watermain/spt_data_ready"                        // 0 when test in progress, 1 when finished
+#define SPT_DATA_STATUS_TOPIC "watermain/spt_data_ready"                        // 0 when test in progress, 1 when finished
 #define SPT_RESULT_TOPIC "watermain/spt_result"                                // send at end of Static Pressure Test - end pressure minus start pressure
 #define RECV_COMMAND_TOPIC "watermain/cmd/#"
 
@@ -96,7 +96,7 @@ unsigned long lastReconnectAttempt = 0;
 unsigned long lastPublish = 0, lastRead = 0, lastValveSync = 0, lastPressErrReport = 0;
 unsigned long tempNow, lastPublishNow, sensorReadNow, mqttNow, valveNow, lastValveSyncNow, lastPressErrReportNow;
 byte sensorStatus;
-float psiTminus0, psiTminus1, psiTminus2;            // psiTminus0 is the current pressure, psiTminus1 is the previous, psiTminus2 is the one before
+float psiTminus0 = 0, psiTminus1 = 0, psiTminus2 = 0;            // psiTminus0 is the current pressure, psiTminus1 is the previous, psiTminus2 is the one before
 float medianPressure, sptBeginningPressure, temperature;
 unsigned int pre_spt_idlePublishInterval, pre_spt_minPublishInterval;
 
@@ -303,19 +303,23 @@ void endSPT()
     // Publish data ready
     sptDataStatus = SPT_DATA_READY;
     sprintf(msg, "%d", sptDataStatus);
-    mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
+    mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
     Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
   }
-  else  // manual intervention occured, so test is not valid - results not published
+  else  // manual or automatic intervention occured, so test is not valid
   {
+    sptDataStatus = SPT_DATA_INVALID;
+    sprintf(msg, "%d", sptDataStatus);
+    mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
+    Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
     Serial.println(F("SPT invalid - valve was prematurely opened"));
   }
 
   // Restore previous states
   opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
-  opParams.minPublishInterval = pre_spt_minPublishInterval; // restore minPublishInterval
+  opParams.minPublishInterval = pre_spt_minPublishInterval;    // restore minPublishInterval
   valveState = valvePreSPT;
-  applyValveState(valvePreSPT, false);                       // restore the valveState to state before test
+  applyValveState(valvePreSPT, false);                         // restore the valveState to state before test
 }
 
 //   ***********************
@@ -531,7 +535,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
       sptDataStatus = SPT_DATA_IN_PROCESS;
       sprintf(msg, "%d", sptDataStatus);
-      mqttClient.publish(SPT_DATA_READY_TOPIC, msg, true);
+      mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
       Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
       
       valvePreSPT = valveState;
