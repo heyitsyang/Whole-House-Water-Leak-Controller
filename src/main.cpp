@@ -85,7 +85,7 @@
 #define DEFAULT_SPT_TEST_DURATION_MINUTES 10         // duration of Static Pressure Test (valve off & observe pressure change)
 #define SPT_DATA_IN_PROCESS 0                        // SPT test is in process and the reported SPT result is old
 #define SPT_DATA_READY 1                             // SPT test has completed normally and the SPT result is valid
-#define SPT_DATA_INVALID 2                           // SPT test has terminated abnormally and resultant data is not valid (test must be run again)
+#define SPT_DATA_INVALID 2                           // SPT test has not been run or terminated abnormally and resultant data is not valid (test must be run again)
 
 
 #define TIMEZONE_EEPROM_OFFSET 0                     // location-to-timezone info - saved in case eztime server is down
@@ -115,7 +115,7 @@ struct Parameters
 struct Parameters opParams;
 
 byte valvePreSPT, valveState = VALVE_ERROR_DISPOSITION; // if all saved data is lost VALVE_ERROR_DISPOSITION is the valve setting
-byte sptDataStatus = SPT_DATA_IN_PROCESS;
+byte sptDataStatus = SPT_DATA_INVALID;
 File paramFileObj, valveFileObj;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
