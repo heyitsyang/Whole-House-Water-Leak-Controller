@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.1 build 2021.06.26"
+#define VERSION "Ver 3.1 build 2021.06.28"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -83,9 +83,9 @@
 #define DEFAULT_PRESSURE_CHANGE_PSI .3               // amount of change in PSI to initiate a publishing event
 #define PREFER_FAHRENHEIT 1                          // temperature reported in Celsius unless this is set to 1
 #define DEFAULT_SPT_TEST_DURATION_MINUTES 10         // duration of Static Pressure Test (valve off & observe pressure change)
-#define SPT_DATA_IN_PROCESS 0                        // SPT test is in process and the reported SPT result is old
-#define SPT_DATA_READY 1                             // SPT test has completed normally and the SPT result is valid
-#define SPT_DATA_INVALID 2                           // SPT test has not been run or terminated abnormally and resultant data is not valid (test must be run again)
+#define SPT_DATA_IN_PROCESS "IN_PROC"                // SPT test is in process and the reported SPT result is old
+#define SPT_DATA_READY "READY"                       // SPT test has completed normally and the SPT result is valid
+#define SPT_DATA_INVALID "INVALID"                   // SPT test has not been run or terminated abnormally and resultant data is not valid (test must be run again)
 
 
 #define TIMEZONE_EEPROM_OFFSET 0                     // location-to-timezone info - saved in case eztime server is down
@@ -115,7 +115,7 @@ struct Parameters
 struct Parameters opParams;
 
 byte valvePreSPT, valveState = VALVE_ERROR_DISPOSITION; // if all saved data is lost VALVE_ERROR_DISPOSITION is the valve setting
-byte sptDataStatus = SPT_DATA_INVALID;
+char sptDataStatus[8];
 File paramFileObj, valveFileObj;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -301,17 +301,17 @@ void endSPT()
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
     // Publish data ready
-    sptDataStatus = SPT_DATA_READY;
-    sprintf(msg, "%d", sptDataStatus);
+    strcpy(sptDataStatus, SPT_DATA_READY);
+    sprintf(msg, "%s", sptDataStatus);
     mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
-    Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
+    Serial.printf("%s sptDataStatus = %s \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
   }
   else  // manual or automatic intervention occured, so test is not valid
   {
-    sptDataStatus = SPT_DATA_INVALID;
-    sprintf(msg, "%d", sptDataStatus);
+    strcpy(sptDataStatus, SPT_DATA_INVALID);
+    sprintf(msg, "%s", sptDataStatus);
     mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
-    Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
+    Serial.printf("%s sptDataStatus = %s \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
     Serial.println(F("SPT invalid - valve was prematurely opened"));
   }
 
@@ -533,10 +533,10 @@ void callback(char *topic, byte *payload, unsigned int length)
     cmdValid = true;
     if ( (opParams.valveInstalled == 1) && (opParams.pressureInstalled == 1) )
     {
-      sptDataStatus = SPT_DATA_IN_PROCESS;
-      sprintf(msg, "%d", sptDataStatus);
+      strcpy(sptDataStatus, SPT_DATA_IN_PROCESS);
+      sprintf(msg, "%s", sptDataStatus);
       mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
-      Serial.printf("%s sptDataStatus = %d \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
+      Serial.printf("%s sptDataStatus = %s \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptDataStatus);
       
       valvePreSPT = valveState;
       valveState = CLOSE_VALVE;
@@ -662,6 +662,7 @@ void setup()
   Serial.begin(115200);
   delay(500);
   Serial.printf("\n\n\nWater Main Controller %s\n\n", VERSION);
+  strcpy(sptDataStatus, SPT_DATA_INVALID);
 
   // set GPIOs
   pinMode(PIN_VALVE_ON_INDICATOR, INPUT);
