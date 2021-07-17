@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.1 build 2021.06.29"
+#define VERSION "Ver 3.1 build 2021.07.16"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -298,13 +298,13 @@ void sptEnd()
     // Publish result
     Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), medianPressure);
     sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
-    mqttClient.publish(SPT_RESULT_TOPIC, msg, true);  
+    mqttClient.publish(SPT_RESULT_TOPIC, msg, false);      // do not publish as with retain flag
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
 
     // Publish attributes
     sprintf(msg, "{\"test_end\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
           myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
-    mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, true);
+    mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, false);    // do not publish with retain flag
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
     // Publish data ready
