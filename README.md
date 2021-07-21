@@ -1,4 +1,4 @@
-# **Water Main Controller**
+# **Water Main Controller & Leak Detector**
 This project started as just a pressure sensor for my home plumbing and expanded to include a electric valve.  The valve was added after I realized I might be able to check for small leaks by performing a static pressure test by turning off the water coming into the house for a short time and watching for a pressure drop when water was not being used and when the hot water heater was not heating.
 
 Of course, the valve can be used to turn off water if water leak sensors external to this project detect a leak as well.  Using external water leak sensors require a home automation system (I use Home Assistant) to be integrated with this project and the external sensors. 
