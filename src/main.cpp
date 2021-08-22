@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
 
-#define VERSION "Ver 3.1 build 2021.07.16"
+#define VERSION "Ver 3.1 build 2021.08.22"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -301,12 +301,6 @@ void sptEnd()
     mqttClient.publish(SPT_RESULT_TOPIC, msg, false);      // do not publish as with retain flag
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
 
-    // Publish attributes
-    sprintf(msg, "{\"test_end\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
-          myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
-    mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, false);    // do not publish with retain flag
-    Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
-
     // Publish data ready
     strcpy(sptDataStatus, SPT_DATA_VALID);
     sprintf(msg, "%s", sptDataStatus);
@@ -338,6 +332,12 @@ void sptEnd()
     Serial.println(F("SPT event end: Aborted due to manual intervention"));
 
   }
+
+  // Publish attributes
+  sprintf(msg, "{\"test_end\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
+        myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
+  mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, false);    // do not publish with retain flag
+  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
 
   // Restore previous states
   opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
