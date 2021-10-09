@@ -1,9 +1,13 @@
-# **Water Main Controller & Leak Detector**
-This project started as just a pressure sensor for my home plumbing and expanded to include a electric valve.  The valve was added after I realized I might be able to check for small leaks by performing a static pressure test by turning off the water coming into the house for a short time and watching for a pressure drop when water was not being used and when the hot water heater was not heating.
+# **Whole House Water Leak Detection & Valve Control**
+The project described here is a part of a complete water detection system consisting of the following major components:
+- Water Valve to cut off water flow should a leak be detected
+- Pressure Sensor to detect small or slow leaks using a periodic static pressure test (weeping valves, toilet internals, etc.)
+- Supervisory computer to schedule tests, analyze results, respond to leaks, and provide a UI.  I use Home Assistant, but another MQTT capable system should suffice.
+- Remote water leak sensors placed under sinks and other areas of likely leakage to trigger water cutoff for external leaks
 
-Of course, the valve can be used to turn off water if water leak sensors external to this project detect a leak as well.  Using external water leak sensors require a home automation system (I use Home Assistant) to be integrated with this project and the external sensors. 
+The project detailed here satisfies the first two components in the list above.  A robust MQTT command set is incorporated for interfacing to a supervisory computer.
 
-MQTT is used as the integration interface to this project.  See additional comments below.
+The code provided does not require the pressure sensor or the valve to be installed to be useful.  It is possible to use the system as a valve control box only or a pressure sensor only.
 <br/><br/>
 ## **Pressure sensor**
 If you need only valve control, the pressure sensor does not have to be installed. Just be sure to set the software accordingly either by setting the *#define INITIAL_PRESSURE_SENSOR_INSTALLED_STATE* directive in the code or during runtime using the *pressureInstalled* MQTT command.
