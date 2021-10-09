@@ -3,7 +3,7 @@ The project described here is a part of a complete water detection system consis
 - Water Valve to cut off water flow should a leak be detected
 - Pressure Sensor to detect small or slow leaks using a periodic static pressure test (weeping valves, toilet internals, etc.)
 - Supervisory computer to schedule tests, analyze results, respond to leaks, and provide a UI.  I use Home Assistant, but another MQTT capable system should suffice.
-- Remote water leak sensors placed under sinks and other areas of likely leakage to trigger water cutoff for external leaks
+- Remote water leak sensors placed under sinks and other areas of likely leakage to trigger immediate water cutoff for sudden leaks
 
 The project detailed here satisfies the first two components in the list above.  A robust MQTT command set is incorporated for interfacing to a supervisory computer.
 
