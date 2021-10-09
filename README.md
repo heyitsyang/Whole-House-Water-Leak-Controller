@@ -117,7 +117,7 @@ For a more comprehensive example or more details, my complete Home Assistant cod
 - scripts.yaml
 
 <br/><br/>
-Below is my Home Assistant dashboard for monitoring the system.
+Below is my Home Assistant dashboard for configuring & monitoring the system.
 
 ![Dashboard](images/Dashboard.jpg)
 
