@@ -59,8 +59,6 @@ Results are published via MQTT at the end of the test.  It is up to program logi
 ### **Home Assistant**
 If you use Home Assistant, the following is the minimum starter code required for your configuration.yaml.  This should make the entities *sensor.water_pressure, sensor.water_temperature, switch.water_valve, sensor.water_static_pressure_test* and *script.scr_spt_start* available for your use.  You will need to study the MQTT commands and topics in the code to write your own data display, leak actions & alarms, etc.
 
-<br/><br/>
-
 If you have installed the pressure sensor, add the following to enable sensors
 
 ```
