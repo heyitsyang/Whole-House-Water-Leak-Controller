@@ -115,8 +115,8 @@ script:
         topic: watermain/cmd/sptStart
 ```
 
+Below is my Home Assistant dashboard for monitoring the system.
 
-This is my Home Assistant dashboard for monitoring the system.
 ![Dashboard](images/Dashboard.jpg)
 
 <br/><br/>
