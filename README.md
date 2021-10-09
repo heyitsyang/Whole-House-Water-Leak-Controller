@@ -116,6 +116,7 @@ If you require more details, my complete Home Assistant code is available at htt
 - sensors.yaml
 - scripts.yaml
 
+<br/><br/>
 Below is my Home Assistant dashboard for monitoring the system.
 
 ![Dashboard](images/Dashboard.jpg)
