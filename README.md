@@ -27,6 +27,8 @@ If you need only pressure sensing, the valve does not have to be installed.  Jus
 The motorized valve used is a U.S. Solid model JFMSV00014 3/4" diameter Motorized Ball Valve (available on Amazon).  _Be sure you order the diameter approriate for your plumbing_.  
 
 This model has five wires - two to control the valve (via polarity reversal) and three to connected to open/closed indicator switches.  There are other models from U.S. Solid that look the same but have different wire configurations.  The five-wire model is required if you wish to use this code without modification.
+
+The five-wire model enables detection of the valve state.  Since there is a manual switch for opening/closing the valve, there is a possibilty that the last stored state of the valve in software is out of sync with the actual valve position.  The software compensates for this by sychronizing with the actual state of the valve.
 <br/><br/>
 ## **Software**
 The Water Main Controller software is written using PlatformIO.  However, it can be compiled using Arduino IDE by simply copying the text in src/main.cpp to a Arduino sketch file (e.g watermain.ino) and compiling using the IDE.  You will need to add the libraries indicated in the code comments before compiling.
@@ -43,9 +45,11 @@ Both the pressure sensor and the valve must be installed to use this feature.
 
 A Static Pressure Test is used to check for small leaks by turning off the water coming into the house for a short time and watching for a pressure drop when water is not being used and the hot water heater is not heating.  Determining hot water heater activity requires an additional sensor that is outside the scope of this project.  Short of sensing hot water heater activity, simply pick a time for the test when the hot water heater activity is unlikely.
 
+The amount of pressure drop indicating a leak will vary with the plumbing system.  You will need to establish what pressure drop is normal for your properly sealed plumbing system in order to determine the setting for your leak alarm threshold.
+
 A Static Pressure Test is initiated by sending the *sptStartTest* MQTT command (read code comments for all commands) to the controller.  Once the command is received, the test begins immediately.  
 
-Results are published via MQTT at the end of the test.  It is up to an external process to determine if the test passed, failed, or  invalid due to water use or hot water heater activity.  In my case the external process is done in Home Assistant.
+Results are published via MQTT at the end of the test.  It is up to program logic in the supervisory computer to determine if the test passed, failed, or is invalid due to water use or hot water heater activity.  In my case the program logic is accomplished using Home Assistant.
 - Default SPT duration is 10 minutes
 - Pressure reporting frequency is set to every 30 seconds during SPT.  Reporting frequency is restored to pre-test frequency when the test concludes.
 - Valve is closed at the start and restored to pre-test state at end of test
@@ -53,12 +57,7 @@ Results are published via MQTT at the end of the test.  It is up to an external 
 
 
 ### **Home Assistant**
-If you use Home Assistant, the following is the code required for your configuration.yaml.  This should make the entities *sensor.water_pressure, sensor.water_temperature, switch.water_valve, sensor.water_static_pressure_test* and *script.scr_spt_start* available for your use.  You will need to study the MQTT commands and topics in the code to write your own data display, leak actions & alrms, etc.
-
-My complete Home Assistant code is available at https://github.com/yang3535/HomeAssistantConfigUnderHassOS.  Look in the following files and search for "spt" to see how I implemented various functions.
-- automations/automations.yaml
-- sensors.yaml
-- scripts.yaml
+If you use Home Assistant, the following is the minimum starter code required for your configuration.yaml.  This should make the entities *sensor.water_pressure, sensor.water_temperature, switch.water_valve, sensor.water_static_pressure_test* and *script.scr_spt_start* available for your use.  You will need to study the MQTT commands and topics in the code to write your own data display, leak actions & alarms, etc.
 
 <br/><br/>
 
@@ -114,6 +113,10 @@ script:
         data:
         topic: watermain/cmd/sptStart
 ```
+If you require more details, my complete Home Assistant code is available at https://github.com/yang3535/HomeAssistantConfigUnderHassOS.  Look in the following files and search for "spt" to see how I implemented various functions.
+- automations/automations.yaml
+- sensors.yaml
+- scripts.yaml
 
 Below is my Home Assistant dashboard for monitoring the system.
 
@@ -146,7 +149,8 @@ Note the aviation connectors below are specified with different number of pins t
 <br/><br/>
 ### Wiring & Assembly
 
-Wiring Diagram - The Wemos D1 Mini ESP8266 device is shown right side up in the diagram below, but will be mounted upside down in the 3D printed enclosure.
+Wiring Diagram - The Wemos D1 Mini ESP8266 device is shown right side up in the diagram below for clarity, but will actually be mounted upside down in the 3D printed enclosure.
+
 ![Circuit Diagram](images/Wiring_Diagram.jpg)
 <br/><br/> 
 
@@ -155,7 +159,8 @@ Components mounted in 3D printed case - Note the color of wires do not match tho
 ![Components](images/Components.jpg)
 <br/><br/> 
 
-Installed project - Leftmost avaition connector is currently unused.
+Installed project - Leftmost avaition connector is currently unused.  THe blue cylinders are a whole-house water filter which conveniently had a 1/4" NPT fitting suitable for the pressure sensor.  Your installation will undoubtedly be different.
+
 ![Complete](images/Final_Installation.jpg)
 <br/><br/>
 ## **3D Printed Enclosure**
