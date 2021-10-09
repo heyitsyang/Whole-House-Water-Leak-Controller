@@ -53,7 +53,13 @@ Results are published via MQTT at the end of the test.  It is up to an external 
 
 
 ### **Home Assistant**
-If you use Home Assistant, the following is the code required for your configuration.yaml.  This should make the entities *sensor.water_pressure, sensor.water_temperature, switch.water_valve, sensor.water_static_pressure_test* and *script.scr_spt_start* available for your use.
+If you use Home Assistant, the following is the code required for your configuration.yaml.  This should make the entities *sensor.water_pressure, sensor.water_temperature, switch.water_valve, sensor.water_static_pressure_test* and *script.scr_spt_start* available for your use.  You will need to study the MQTT commands and topics in the code to write your own data display, leak actions & alrms, etc.
+
+My complete Home Assistant code is available at https://github.com/yang3535/HomeAssistantConfigUnderHassOS.  Look in the following files and search for "spt" to see how I implemented various functions.
+- automations/automations.yaml
+- sensors.yaml
+- scripts.yaml
+
 <br/><br/>
 
 If you have installed the pressure sensor, add the following to enable sensors
@@ -108,6 +114,11 @@ script:
         data:
         topic: watermain/cmd/sptStart
 ```
+
+
+This is my Home Assistant dashboard for monitoring the system.
+![Dashboard](images/Dashboard.jpg)
+
 <br/><br/>
 ## **Electronics**
 The list of components I used is below.  It looks like a long list because of the URLs, but here are only eight main items.  If you plan to 3D print the enclosure, buying the specific electronic parts below will ensure fit inside the enclosure.
