@@ -111,7 +111,7 @@ script:
         data:
         topic: watermain/cmd/sptStart
 ```
-If you require more details, my complete Home Assistant code is available at https://github.com/yang3535/HomeAssistantConfigUnderHassOS.  Look in the following files and search for "spt" to see how I implemented various functions.
+For a more comprehensive example or more details, my complete Home Assistant code is available at https://github.com/yang3535/HomeAssistantConfigUnderHassOS.  Look in the following files and search for "spt" to see how I implemented various functions.
 - automations/automations.yaml
 - sensors.yaml
 - scripts.yaml
