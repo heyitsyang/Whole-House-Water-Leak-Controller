@@ -54,6 +54,7 @@ Results are published via MQTT at the end of the test.  It is up to program logi
 - Pressure reporting frequency is set to every 30 seconds during SPT.  Reporting frequency is restored to pre-test frequency when the test concludes.
 - Valve is closed at the start and restored to pre-test state at end of test
 - Timestamp of start of test, test duration, beginning pressure, ending pressure, and the difference is published via MQTT at the *end* of the test
+- If a sudden/large pressure drop occurs during the SPT, the test a aborted, the valve is opened, and an aborted SPT status is published .  This avoids the inconvenience of water not being availble for the duration of the SPT test.  The supervisory computer can reschedule a test should this occur.
 
 
 ### **Home Assistant**
