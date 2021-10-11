@@ -159,7 +159,7 @@ Components mounted in 3D printed case - Note the color of wires do not match tho
 ![Components](images/Components.jpg)
 <br/><br/> 
 
-Installed project - Leftmost avaition connector is currently unused.  THe blue cylinders are a whole-house water filter which conveniently had a 1/4" NPT fitting suitable for the pressure sensor.  Your installation will undoubtedly be different.
+Installed project - Leftmost avaition connector is currently unused.  The blue cylinders are a whole-house water filter which conveniently had a 1/4" NPT fitting suitable for the pressure sensor.
 
 ![Complete](images/Final_Installation.jpg)
 <br/><br/>
