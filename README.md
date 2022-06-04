@@ -58,53 +58,102 @@ Results are published via MQTT at the end of the test.  It is up to program logi
 
 
 ### **Home Assistant**
-If you use Home Assistant, the following is the minimum starter code required for your configuration.yaml.  This should make the entities *sensor.water_pressure, sensor.water_temperature, switch.water_valve, sensor.water_static_pressure_test* and *script.scr_spt_start* available for your use.  You will need to study the MQTT commands and topics in the code to write your own data display, leak actions & alarms, etc.
+If you use Home Assistant, the following are the MQTT definitions required for your configuration.yaml.  You will need to study the MQTT commands and topics in the code to write your own data display, leak actions & alarms, etc.
 
-If you have installed the pressure sensor, add the following to enable sensors
+Obviously, if you did not install both pressure sensor and valve, the Static Pressure Test and some parts of the MQTT configuration will not apply.
+
+```
+ mqtt:
+    sensor:
+      - unique_id: water_spt_data_status
+        name: "SPT Data Status"
+        state_topic: "watermain/spt_data_status"
+        json_attributes_topic: "watermain/data_status/attributes"
+        qos: 0
+
+      - unique_id: water_pressure
+        name: "Water Pressure"
+        state_topic: "watermain/water_pressure"
+        qos: 0
+        device_class: "pressure"
+        unit_of_measurement: "psi"
+        expire_after: 600 # state becomes "unknown" after 10 minutes
+
+      - unique_id: water_temperature
+        name: "Water Temperature"
+        state_topic: "watermain/water_temperature"
+        qos: 0
+        device_class: "temperature"
+        unit_of_measurement: "°F"
+        expire_after: 600 # state becomes "unknown" after 10 minutes
+
+      - unique_id: unvalidated_water_static_pressure_test_result # see sensor.validated_water_static_pressure_test_result
+        name: "Unvalidated Water Static Pressure Test Result"
+        state_topic: "watermain/spt_result"
+        unit_of_measurement: "psi"
+        json_attributes_topic: "watermain/spt_result/attributes"
+
+    switch:
+      - name: "Water Valve"
+        unique_id: water_valve
+        state_topic: "watermain/valve_zeroisclosed"
+        command_topic: "watermain/cmd/valveState"
+        payload_on: "1"
+        payload_off: "0"
+        qos: 2
+```
+<br/>
+The following are the template sensors derived from the the controller data.
+<br/>
 
 ```
 sensor:
-  - platform: mqtt
-    unique_id: water_pressure
-    name: "Water Pressure"
-    state_topic: "watermain/water_pressure"
-    qos: 0
-    device_class: "pressure"
-    unit_of_measurement: "PSI"
-    
-  - platform: mqtt
-    unique_id: water_temperature
-    name: "Water Temperature"
-    state_topic: "watermain/water_temperature"
-    qos: 0
-    device_class: "temperature"
-    unit_of_measurement: "ºF"
-  ```
+    - platform: template
+      sensors:
+        last_static_pressure_test:
+          friendly_name: "Last Static Pressure Test"
+          value_template: >-
+            {{ as_timestamp( state_attr('sensor.unvalidated_water_static_pressure_test_result', 'test_end'), '' ) 
+            | timestamp_custom ('%m/%d %H:%M', True, 'unknown') }}
 
-  If you have installed the valve, add the following for manual control
-  
-```
-switch:
-  - platform: mqtt
-    name: "Water Valve"
-    unique_id: water_valve
-    state_topic: "watermain/valve_zeroisclosed"
-    command_topic: "watermain/cmd/valveState"
-    payload_on: "1"
-    payload_off: "0"
-    qos: 2
-```
+    - platform: template
+      sensors:
+        validated_water_static_pressure_test_result:
+          friendly_name: "Validated Water Static Pressure Test Result"
+          unit_of_measurement: "psi"
+          value_template: >-
+            {% if (is_state('sensor.spt_data_status', 'valid')) %}
+              {{ states('sensor.unvalidated_water_static_pressure_test_result') }}
+            {% endif %}
 
-If you have both pressure sensor and valve installed, the add the following to enable SPT
-```
-sensor:
-  - platform: mqtt
-    unique_id: water_static_pressure_test
-    name: "Water Static Pressure Test"
-    state_topic: "watermain/spt_result"
-    unit_of_measurement: "PSI"
-    json_attributes_topic: "watermain/spt_result/attributes"
+    - platform: template
+      sensors:
+        water_static_pressure_loss_per_minute:
+          friendly_name: "Pressure Loss per Minute"
+          unit_of_measurement: "psi"
+          value_template: >
+            {{ (states('sensor.validated_water_static_pressure_test_result') | float(default=0)) / 
+              (states('input_number.inp_num_spt_duration') | float(default=0)) }}
 
+    - platform: template
+      sensors:
+        min_water_pressure:
+          friendly_name: "Min Water Pressure"
+          unit_of_measurement: "psi"
+          value_template: "{{ state_attr('sensor.24hr_avg_water_pressure', 'min_value') }}"
+
+    - platform: template
+      sensors:
+        max_water_pressure:
+          friendly_name: "Max Water Pressure"
+          unit_of_measurement: "psi"
+          value_template: "{{ state_attr('sensor.24hr_avg_water_pressure', 'max_value') }}"      
+```
+<br/>
+To manually start the SPT test, use the following script.
+<br/>
+
+```
 script:
   scr_manual_spt:
     sequence:
@@ -118,7 +167,7 @@ For a more comprehensive example or more details, my complete Home Assistant cod
 - scripts.yaml
 
 <br/><br/>
-Below is my Home Assistant dashboard for configuring & monitoring the system.
+Below is my Home Assistant dashboard for configuring & monitoring the system.  Note the water heater sensor shown in the dashboard is not part of this project.  Since the water heater being active influences the SPT results, I postpone the SPT test in my automation if the water heater is active.  If you run the Static Pressure Test in the middle of the night, water heater interference is less likely, so water heater sensor is optional.
 
 ![Dashboard](images/Dashboard.jpg)
 
