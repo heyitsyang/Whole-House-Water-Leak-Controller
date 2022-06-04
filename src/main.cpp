@@ -9,7 +9,7 @@
 #include <ezTime.h>
 
 // private definitions
-#include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my network, not yours
+#include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my WIFI network, not yours
 
 #define VERSION "Ver 3.1 build 2021.08.22"
 
