@@ -33,6 +33,11 @@ The five-wire model enables detection of the valve state.  Since there is a manu
 ## **Software**
 The Water Main Controller software is written using PlatformIO.  However, it can be compiled using Arduino IDE by simply copying the text in src/main.cpp to a Arduino sketch file (e.g watermain.ino) and compiling using the IDE.  You will need to add the libraries indicated in the code comments before compiling.
 
+### **Libraries**
+Two libraries must be added to the development environment to sucessfully compile.  They are available via the Arduino or PlatformIO library manager or from github:
+- knolleary/PuSubClient
+- ropg/ezTime
+
 ### **MQTT**
 All reporting and interaction with The Water Main Montior is accomplished via MQTT.  If you've never heard of MQTT, there are many good tutorials on the web,  It is best to have a firm grasp on MQTT concepts before beginning this project.
 
