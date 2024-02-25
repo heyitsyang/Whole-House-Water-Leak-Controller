@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my WIFI network, not yours
 
-#define VERSION "Ver 3.1 build 2021.08.22"
+#define VERSION "Ver 3.1 build 2024-02-25"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -138,6 +138,7 @@ void setup_wifi()
   // We start by connecting to a WiFi network
 
   WiFi.mode(WIFI_STA);
+  WiFi.hostname(DEVICE_NAME);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   Serial.print(F("\nWaiting for WiFi "));
@@ -724,7 +725,6 @@ void setup()
 
   Wire.begin(PIN_SDA, PIN_SCL);
 
-  WiFi.hostname(DEVICE_NAME);
   setup_wifi();
 
   ArduinoOTA.setHostname(DEVICE_NAME);
@@ -743,6 +743,7 @@ void setup()
   lastReconnectAttempt = 0;
 
   Serial.print(F("Initializing LittleFS..."));
+
   if (LittleFS.begin())
     Serial.println(F("done\n"));
   else
