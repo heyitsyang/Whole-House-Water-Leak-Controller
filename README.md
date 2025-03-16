@@ -181,8 +181,8 @@ Below is my Home Assistant dashboard for configuring & monitoring the system.  N
 The list of components I used is below.  It looks like a long list because of the URLs, but here are only eight main items.  If you plan to 3D print the enclosure, buying the specific electronic parts below will ensure fit inside the enclosure.
 
 - Qty 1 - M32JM-000105-100PG - 
-TE Connectivity Industrial Pressure Sensors
-US HTS:8532290040 ECCN:EAR99 COO:CN (Mouser Electronics part # 824-M32JM-000105-100) https://www.mouser.com/ProductDetail/Measurement-Specialties/M32JM-000105-100PG/?qs=%2Fha2pyFaduiKS8vuISRZt1c2xbCd05SXKUGrxnTvYozgz5HdA8ryOL3gmNri9Gka
+TE Connectivity Industrial Pressure Sensor part no. 20006465-00
+ (Mouser Electronics part # 824-M32JM-000105-100) https://www.mouser.com/ProductDetail/Measurement-Specialties/M32JM-000105-100PG/?qs=%2Fha2pyFaduiKS8vuISRZt1c2xbCd05SXKUGrxnTvYozgz5HdA8ryOL3gmNri9Gka
 - Qty 1 (optional)  - Motorized Ball Valve model JFMSV00014- .75" Stainless Steel Electrical Ball Valve with Full Port, 9-24V DC and 5 Wire Setup, can be used with Indicator Lights, [Indicate Open or Closed Position] by U.S. Solid
 https://amazon.com/dp/B06Y11B8VN/ref=cm_sw_em_r_mt_dp_zI.YFbWGFTD1B?_encoding=UTF8&th=1
 - Qty 1 - WeMos ESP8266 D1 Mini https://www.amazon.com/Makerfocus-NodeMcu-Development-ESP8266-Compatible/dp/B01N3P763C/ref=sr_1_26?dchild=1&keywords=Wemos+esp8266&qid=1609860600&sr=8-26
