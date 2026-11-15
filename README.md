@@ -58,8 +58,12 @@ Results are published via MQTT at the end of the test.  It is up to program logi
 - Default SPT duration is 10 minutes
 - Pressure reporting frequency is set to every 30 seconds during SPT.  Reporting frequency is restored to pre-test frequency when the test concludes.
 - Valve is closed at the start and restored to pre-test state at end of test
+- Beginning and ending pressures are each the median of 9 fresh sensor readings (~2 seconds) taken with the valve closed - not the last published pressure, which can be minutes old and would let water use shortly before the test show up as a false pressure drop
 - Timestamp of start of test, test duration, beginning pressure, ending pressure, and the difference is published via MQTT at the *end* of the test
-- If a sudden/large pressure drop occurs during the SPT, the test a aborted, the valve is opened, and an aborted SPT status is published .  This avoids the inconvenience of water not being availble for the duration of the SPT test.  The supervisory computer can reschedule a test should this occur.
+- If water is used during the SPT, the test is aborted, the valve is opened, and an aborted SPT status is published.  This avoids the inconvenience of water not being availble for the duration of the SPT test, and keeps water use from being reported as a leak.  Water use is detected two ways:
+  - a sudden drop: filtered pressure falls more than 0.3 PSI within 5 seconds (`SPT_DEMAND_STEP_PSI`).  A leak small enough to need the SPT drops pressure by hundredths of a PSI per minute.
+  - a large drop: pressure falls more than `sptDemandWaterPercentDrop` percent (default 30%) from the beginning pressure
+- The reason for an abort is published in the `abort_reason` attribute of `watermain/spt_data_status/attributes` (`water_demand_step`, `water_demand_percent`, `manual_intervention`, `beginning_pressure_read_failed`, `ending_pressure_read_failed`).  The supervisory computer can reschedule a test should this occur.
 
 
 ### **Home Assistant**
