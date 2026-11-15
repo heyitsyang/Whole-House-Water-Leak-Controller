@@ -11,7 +11,7 @@
 // private definitions
 #include "private.h"               // <<<<<<<  COMMENT THIS OUT FOR YOUR INSTANCE - this contains stuff for my WIFI network, not yours
 
-#define VERSION "Ver 3.2 build 2024-02-25"
+#define VERSION "Ver 3.3 build 2026-11-15"
 
 // i2c pins are usually D1 & D2, but this application requires use of D1 & D2, so
 // D6 & D7 are used instead - see Valve Control Settings below for explanation
@@ -84,6 +84,12 @@
 #define DEFAULT_SPT_REPORT_PSI_DROP .3               // amount of change in PSI to initiate a publishing event
 #define DEFAULT_SPT_DEMAND_WATER_PERCENT_DROP 30     // percent of sudden pressure drop during Static Pressure Test required to assume pressure drop is intentional (water is needed)
 #define DEFAULT_SPT_TEST_DURATION_MINUTES 10         // duration of Static Pressure Test (valve off & observe pressure change)
+#define SPT_SAMPLE_COUNT 9                           // SPT beginning/ending pressure = median of this many fresh sensor reads
+#define SPT_SAMPLE_INTERVAL_MS 250                   //   taken this far apart (9 x 250 ms = ~2.25 secs)
+#define SPT_SAMPLE_TIMEOUT_MS 5000                   //   give up (abort SPT) if they can't be collected within this time
+#define SPT_DEMAND_STEP_PSI 0.3                      // abort SPT as water demand if filtered pressure falls more than this...
+#define SPT_DEMAND_STEP_WINDOW_READS 10              //   ...below its peak over this many sensor reads (10 x 500 ms = 5 secs)
+                                                     //   water use drops whole PSI in seconds; a leak drops hundredths of a PSI per minute
 #define SPT_DATA_IN_PROCESS "in_process"             // SPT test is in process and the reported SPT result is old
 #define SPT_DATA_VALID "valid"                       // SPT test has completed normally and the SPT result is valid
 #define SPT_DATA_ABORTED "aborted"                   // SPT test has terminated abnormally and resultant data is not valid (test must be run again)
@@ -289,6 +295,143 @@ boolean applyValveState(int desiredState, boolean writeFlag) // this routine use
   }
 }
 
+void sptEnd();  // forward declaration - referenced by sptAbort()
+
+//   ***************************
+//   **  sptSamplePressure()  **
+//   ***************************
+// Take a FRESH pressure reading directly from the sensor: the median of SPT_SAMPLE_COUNT reads taken
+// SPT_SAMPLE_INTERVAL_MS apart. Used for the SPT beginning & ending pressures instead of medianPressure,
+// which is only updated when a reading is published (up to idlePublishInterval = 5 min old outside the test)
+// and is a median of readings that can span several publish intervals.
+// Returns false if enough valid readings could not be obtained.
+bool sptSamplePressure(float *psiOut)
+{
+  float samples[SPT_SAMPLE_COUNT];
+  byte good = 0;
+  unsigned long sampleStart = millis();
+
+  while ((good < SPT_SAMPLE_COUNT) && (millis() - sampleStart < SPT_SAMPLE_TIMEOUT_MS))
+  {
+    Wire.requestFrom(I2C_ADDR, 4);
+    if (Wire.available() == 4)
+    {
+      uint16_t rawP = (uint16_t)Wire.read() << 8; // upper 8 bits
+      rawP |= (uint16_t)Wire.read();              // lower 8 bits
+      Wire.read();                                // temperature bytes are not needed here
+      Wire.read();
+      if ((rawP >> 14) == 0)                      // status 0 = fresh, valid data
+        samples[good++] = (((rawP & 0x3FFF) - 1000.0) / (15000.0 - 1000.0)) * MAX_PRESSURE;
+    }
+    unsigned long waitStart = millis();
+    while (millis() - waitStart < SPT_SAMPLE_INTERVAL_MS)
+      yield();
+  }
+
+  if (good < SPT_SAMPLE_COUNT)
+  {
+    Serial.printf("SPT pressure sample failed: only %d of %d valid readings\n", good, SPT_SAMPLE_COUNT);
+    return false;
+  }
+
+  // insertion sort, then take the middle value
+  for (byte i = 1; i < good; i++)
+  {
+    float v = samples[i];
+    int j = i - 1;
+    while ((j >= 0) && (samples[j] > v))
+    {
+      samples[j + 1] = samples[j];
+      j--;
+    }
+    samples[j + 1] = v;
+  }
+  *psiOut = samples[good / 2];
+  return true;
+}
+
+//   *********************************
+//   **  sptResetDemandDetector()   **
+//   *********************************
+// Water-demand (step drop) detector state - see sptWaterDemandStep()
+float sptRawHist[3];                             // last 3 raw readings during SPT
+float sptMedHist[SPT_DEMAND_STEP_WINDOW_READS];  // recent median-of-3 values during SPT
+byte sptRawCount = 0, sptMedCount = 0, sptMedIdx = 0;
+float sptLastStepDrop = 0;
+
+void sptResetDemandDetector()
+{
+  sptRawCount = 0;
+  sptMedCount = 0;
+  sptMedIdx = 0;
+  sptLastStepDrop = 0;
+}
+
+//   ******************************
+//   **  sptWaterDemandStep()    **
+//   ******************************
+// Called with every raw sensor reading during SPT (every sensorReadInterval, 500 ms by default).
+// Water use with the main valve closed drops pressure by whole PSI within seconds; a leak the SPT is
+// meant to find drops it by hundredths of a PSI per minute. Returns true if the (median-of-3 filtered)
+// pressure has fallen more than SPT_DEMAND_STEP_PSI below its peak over the last
+// SPT_DEMAND_STEP_WINDOW_READS readings, i.e. water was drawn during the test.
+bool sptWaterDemandStep(float psi)
+{
+  sptRawHist[0] = sptRawHist[1];
+  sptRawHist[1] = sptRawHist[2];
+  sptRawHist[2] = psi;
+  if (sptRawCount < 3)
+    sptRawCount++;
+  if (sptRawCount < 3)
+    return false;
+
+  // median of last 3 raw readings filters single-reading glitches
+  float a = sptRawHist[0], b = sptRawHist[1], c = sptRawHist[2];
+  float med = fmaxf(fminf(a, b), fminf(fmaxf(a, b), c));
+
+  float peak = med;
+  for (byte i = 0; i < sptMedCount; i++)
+    if (sptMedHist[i] > peak)
+      peak = sptMedHist[i];
+
+  sptMedHist[sptMedIdx] = med;
+  sptMedIdx = (sptMedIdx + 1) % SPT_DEMAND_STEP_WINDOW_READS;
+  if (sptMedCount < SPT_DEMAND_STEP_WINDOW_READS)
+    sptMedCount++;
+
+  sptLastStepDrop = peak - med;
+  return (sptLastStepDrop > SPT_DEMAND_STEP_PSI);
+}
+
+//   ***********************
+//   **     sptAbort()    **
+//   ***********************
+// Terminate an in-process SPT as ABORTED (result not valid, test should be re-run) and restore the
+// pre-test valve state & publish intervals. reason is published in the spt_data_status attributes.
+void sptAbort(const char *reason)
+{
+  deleteEvent(sptEnd);  // delete event from ezTime event handler (harmless if not set)
+
+  // set status to ABORTED
+  strcpy(sptDataStatus, SPT_DATA_ABORTED);
+  sprintf(msg, "%s", sptDataStatus);
+  mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
+  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC, msg);
+
+  // report consecutive aborts & reason as attributes
+  sptConsecAborts++;
+  sprintf(msg, "{\"consec_aborts\": \"%d\", \"abort_reason\": \"%s\"}", sptConsecAborts, reason);
+  mqttClient.publish(SPT_DATA_STATUS_TOPIC"/attributes", msg, true);
+  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC"/attributes", msg);
+
+  // Restore previous states
+  opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
+  opParams.minPublishInterval = pre_spt_minPublishInterval;    // restore minPublishInterval
+  valveState = valvePreSPT;
+  applyValveState(valvePreSPT, false);                         // restore the valveState to state before test
+  Serial.printf("SPT event end: Aborted (%s)\n", reason);
+}
+
 //   ***********************
 //   **      sptEnd()     **
 //   ***********************
@@ -296,9 +439,16 @@ void sptEnd()
 {
   if (valveState == CLOSE_VALVE)  // SPT has terminated normally if valve has not been opened during test
   {
+    float sptEndingPressure;
+    if (!sptSamplePressure(&sptEndingPressure))  // fresh reading, not the last published median
+    {
+      sptAbort("ending_pressure_read_failed");
+      return;
+    }
+
     // Publish result
-    Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), medianPressure);
-    sprintf(msg, "%.2f", medianPressure - sptBeginningPressure);
+    Serial.printf("%s SPT Ending Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptEndingPressure);
+    sprintf(msg, "%.2f", sptEndingPressure - sptBeginningPressure);
     mqttClient.publish(SPT_RESULT_TOPIC, msg, false);      // do not publish as with retain flag
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC, msg);
 
@@ -314,37 +464,23 @@ void sptEnd()
     mqttClient.publish(SPT_DATA_STATUS_TOPIC"/attributes", msg, true);  
     Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC"/attributes", msg);
     Serial.println(F("SPT event end: Normal"));
+
+    // Publish attributes
+    sprintf(msg, "{\"test_end\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
+          myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, sptEndingPressure);
+    mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, false);    // do not publish with retain flag
+    Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
+
+    // Restore previous states
+    opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
+    opParams.minPublishInterval = pre_spt_minPublishInterval;    // restore minPublishInterval
+    valveState = valvePreSPT;
+    applyValveState(valvePreSPT, false);                         // restore the valveState to state before test
   }
-  else  // SPT terminated abnormally - manual has intervention occured, so test is not valid
+  else  // SPT terminated abnormally - manual intervention has occured, so test is not valid
   {
-    
-    // set status to ABORTED
-    strcpy(sptDataStatus, SPT_DATA_ABORTED);
-    sprintf(msg, "%s", sptDataStatus);
-    mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
-    Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC, msg);
-    
-    // report consecutive aborts attribute
-    sptConsecAborts++;
-    sprintf(msg, "{\"consec_aborts\": \"%d\"}", sptConsecAborts);
-    mqttClient.publish(SPT_DATA_STATUS_TOPIC"/attributes", msg, true);  
-    Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC"/attributes", msg);
-
-    Serial.println(F("SPT event end: Aborted due to manual intervention"));
-
+    sptAbort("manual_intervention");
   }
-
-  // Publish attributes
-  sprintf(msg, "{\"test_end\": \"%s\", \"test_minutes\": \"%d\", \"beginning_pressure\": \"%.2f\", \"ending_pressure\": \"%.2f\"}",
-        myTZ.dateTime(RFC3339).c_str(), opParams.sptDuration, sptBeginningPressure, medianPressure);
-  mqttClient.publish(SPT_RESULT_TOPIC"/attributes", msg, false);    // do not publish with retain flag
-  Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_RESULT_TOPIC"/attributes", msg);
-
-  // Restore previous states
-  opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
-  opParams.minPublishInterval = pre_spt_minPublishInterval;    // restore minPublishInterval
-  valveState = valvePreSPT;
-  applyValveState(valvePreSPT, false);                         // restore the valveState to state before test
 }
 
 //   ***********************
@@ -470,7 +606,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   //   sptDuration/<new_value>                - assigns a <new_value> in minutes, but does not save to NVM
   //   valveState/<new_value>                 - 1 = OPEN, 0 = CLOSED, assigns and SAVES new value to NVM
   //   sptPressureDrop/<new_value>            - assings a <new_value> in PSI, but does not save to NVM
-  //   sptDemandWaterPercentDrop/<new_value>  - assigns a <new_value> in PSI, but does not save to NVM
+  //   sptDemandWaterPercentDrop/<new_value>  - assigns a <new_value> in percent, but does not save to NVM
   //   sptStart       - starts the Static Pressure Test
   //   reportParams   - publishes parameters to REPORT_TOPIC replacing previous retained report on broker
   //   defaultParams  - sets parameters to default firmware values, but does not save to NVM
@@ -595,9 +731,20 @@ void callback(char *topic, byte *payload, unsigned int length)
       pre_spt_minPublishInterval = opParams.minPublishInterval;
       opParams.idlePublishInterval = 15000;  // temporarily report every 15 secs during SPT if idle
       opParams.minPublishInterval = SPT_MIN_PUBLISH_INTERVAL_MS;  // set to shorter interval during SPT
-      sptBeginningPressure = medianPressure;
-      Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
-      setEvent(sptEnd, now() + (opParams.sptDuration * 60)); // use ezTime event handler & set event time
+      // Beginning pressure must be a FRESH reading taken now, with the valve closed. medianPressure is only
+      // updated when a reading is published, so before the test it can be up to idlePublishInterval (5 min)
+      // old and was taken with the valve open - water use or drift in the minutes before the test then
+      // shows up as a false pressure drop (or rise) in the result.
+      if (sptSamplePressure(&sptBeginningPressure))
+      {
+        // reseed the published-median history so in-test medians don't mix in pre-test readings
+        psiTminus0 = psiTminus1 = psiTminus2 = medianPressure = sptBeginningPressure;
+        sptResetDemandDetector();
+        Serial.printf("%s SPT Beginning Pressure = %.2f \n", myTZ.dateTime("[H:i:s.v]").c_str(), sptBeginningPressure);
+        setEvent(sptEnd, now() + (opParams.sptDuration * 60)); // use ezTime event handler & set event time
+      }
+      else
+        sptAbort("beginning_pressure_read_failed");
     }
     else
       Serial.println("Invalid request - both valve and pressure sensor must be installed valve must be in open position for SPT");
@@ -965,6 +1112,14 @@ void loop()
           break;
         }
       }
+
+      // during SPT, check every fresh reading for a sudden drop = someone is using water, test is not valid
+      if ((sensorStatus == 0) && (strcmp(sptDataStatus, SPT_DATA_IN_PROCESS) == 0) && sptWaterDemandStep(psiTminus0))
+      {
+        Serial.printf("%s SPT water demand: pressure fell %.2f PSI within %d reads\n", myTZ.dateTime("[H:i:s.v]").c_str(),
+                      sptLastStepDrop, SPT_DEMAND_STEP_WINDOW_READS);
+        sptAbort("water_demand_step");
+      }
     }
 
     lastPublishNow = millis();
@@ -1000,32 +1155,12 @@ void loop()
       psiTminus1 = psiTminus0;
     }
 
-    // automatically open valve if demand pressure drop is met during SPT
+    // automatically open valve if large demand pressure drop is met during SPT
+    // (uses opParams so the sptDemandWaterPercentDrop MQTT command takes effect - it previously used the #define)
     if (strcmp(sptDataStatus, SPT_DATA_IN_PROCESS) == 0)
     {
-      if (fabs(sptBeginningPressure - medianPressure) > (sptBeginningPressure * DEFAULT_SPT_DEMAND_WATER_PERCENT_DROP/100))
-      {       
-        deleteEvent(sptEnd);  // delete event from ezTime event handler
-        
-        // set status to ABORTED
-        strcpy(sptDataStatus, SPT_DATA_ABORTED);
-        sprintf(msg, "%s", sptDataStatus);
-        mqttClient.publish(SPT_DATA_STATUS_TOPIC, msg, true);
-        Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC, msg);
-        
-        // report consecutive aborts attribute
-        sptConsecAborts++;
-        sprintf(msg, "{\"consec_aborts\": \"%d\"}", sptConsecAborts);
-        mqttClient.publish(SPT_DATA_STATUS_TOPIC"/attributes", msg, true);  
-        Serial.printf("%s  MQTT SENT: %s/%s \n", myTZ.dateTime("[H:i:s.v]").c_str(), SPT_DATA_STATUS_TOPIC"/attributes", msg);
-
-        // Restore previous states
-        opParams.idlePublishInterval = pre_spt_idlePublishInterval;  // restore idlePublishInterval
-        opParams.minPublishInterval = pre_spt_minPublishInterval;    // restore minPublishInterval
-        valveState = valvePreSPT;
-        applyValveState(valvePreSPT, false);                         // restore the valveState to state before test
-        Serial.println(F("SPT event end: Aborted due to water demand"));
-      }
+      if (fabs(sptBeginningPressure - medianPressure) > (sptBeginningPressure * opParams.sptDemandWaterPercentDrop / 100))
+        sptAbort("water_demand_percent");
     }
   }
 }
